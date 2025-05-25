@@ -2,6 +2,20 @@
 
 All notable changes to the "SebGuru Assistant" extension will be documented in this file.
 
+## [0.4.0] - 2023-08-20
+
+### Added
+- Project structure creation capabilities:
+  - Create files with AI-generated content
+  - Create directories
+  - Generate complete project structures
+- Built-in templates for common project types:
+  - Node.js projects
+  - React applications
+  - Python projects
+- Custom project structure generation using AI
+- File content generation based on descriptions
+
 ## [0.3.0] - 2023-08-15
 
 ### Added

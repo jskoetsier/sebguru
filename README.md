@@ -43,11 +43,48 @@ This flexibility allows you to use:
 
 ## Commands
 
+### Code Intelligence
 - **AI: Ask AI Assistant** - Ask any coding question
 - **AI: Explain Code** - Get detailed explanations of selected code
 - **AI: Improve Code** - Receive suggestions for better code
 - **AI: Generate Code** - Create code from descriptions
 - **AI: Run Workflow** - Execute specialized code workflows
+
+### Project Structure
+- **AI: Create File** - Create a new file with optional AI-generated content
+- **AI: Create Directory** - Create a new directory
+- **AI: Create Project Structure** - Generate complete project structures with templates
+
+## Project Structure Creation
+
+The extension provides powerful tools for creating project structures:
+
+### Built-in Templates
+
+Create complete project structures with a few clicks using built-in templates for:
+
+- **Node.js Projects**: Basic Node.js application with package.json and folder structure
+- **React Applications**: React app with components, styles, and configuration
+- **Python Projects**: Python project with src/tests directories and setup files
+
+### Custom AI-Generated Structures
+
+Describe the project structure you want in natural language, and the AI will generate it for you:
+
+1. Select "AI: Create Project Structure" from the command palette
+2. Enter the base path for your project
+3. Choose "Custom" as the project type
+4. Describe your desired structure (e.g., "A TypeScript project with Express backend and React frontend")
+5. The AI will generate a complete project structure based on your description
+
+### File Content Generation
+
+When creating files, you can:
+- Create empty files
+- Enter content manually
+- Have the AI generate content based on your description
+
+The AI will automatically adapt to the file type based on the extension, generating appropriate content for JavaScript, Python, HTML, CSS, and many other file types.
 
 ## Privacy & Security
 

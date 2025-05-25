@@ -938,6 +938,242 @@ function activate(context) {
       }
     }),
 
+    vscode.commands.registerCommand('sebguru-assistant.createFile', async () => {
+      // Get file path from user
+      const filePath = await vscode.window.showInputBox({
+        placeHolder: '/path/to/file.ext',
+        prompt: 'Enter the path of the file to create'
+      });
+
+      if (!filePath) {
+        return;
+      }
+
+      // Get file content from user or AI
+      const contentSource = await vscode.window.showQuickPick(
+        [
+          { label: 'Empty File', description: 'Create an empty file', value: 'empty' },
+          { label: 'Enter Content', description: 'Enter file content manually', value: 'manual' },
+          { label: 'Generate with AI', description: 'Generate file content using AI', value: 'ai' }
+        ],
+        { placeHolder: 'How do you want to create the file content?' }
+      );
+
+      if (!contentSource) {
+        return;
+      }
+
+      let content = '';
+
+      if (contentSource.value === 'manual') {
+        // Get content from user
+        content = await vscode.window.showInputBox({
+          placeHolder: 'File content...',
+          prompt: 'Enter the content for the file',
+          multiline: true
+        });
+
+        if (content === undefined) {
+          return;
+        }
+      } else if (contentSource.value === 'ai') {
+        // Get content description from user
+        const description = await vscode.window.showInputBox({
+          placeHolder: 'Describe what you want the file to contain...',
+          prompt: 'Describe the content you want to generate'
+        });
+
+        if (!description) {
+          return;
+        }
+
+        // Determine file type from extension
+        const fileExtension = filePath.split('.').pop() || '';
+
+        try {
+          // Show progress indicator
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Generating file content...',
+            cancellable: false
+          }, async (progress) => {
+            progress.report({ increment: 0 });
+
+            // Generate content using AI
+            content = await client.makeRequest(
+              `Generate a ${fileExtension} file with the following description: ${description}.
+               The file should be named ${filePath.split('/').pop()}.
+               Only output the file content, no explanations or markdown formatting.`,
+              {
+                systemPrompt: `You are an expert programmer. Generate high-quality ${fileExtension} code based on the user's description.
+                               Do not include markdown code blocks or explanations, just output the raw file content.`,
+                temperature: 0.2
+              }
+            );
+
+            // Clean up the content (remove markdown code blocks if present)
+            content = content.replace(/```[\w]*\n/g, '').replace(/```$/g, '').trim();
+
+            progress.report({ increment: 100 });
+            return content;
+          });
+        } catch (error) {
+          vscode.window.showErrorMessage(`Error generating file content: ${error.message}`);
+          return;
+        }
+      }
+
+      // Create the file
+      const success = await createFile(filePath, content);
+      if (success) {
+        vscode.window.showInformationMessage(`File created: ${filePath}`);
+      }
+    }),
+
+    vscode.commands.registerCommand('sebguru-assistant.createDirectory', async () => {
+      // Get directory path from user
+      const dirPath = await vscode.window.showInputBox({
+        placeHolder: '/path/to/directory',
+        prompt: 'Enter the path of the directory to create'
+      });
+
+      if (!dirPath) {
+        return;
+      }
+
+      // Create the directory
+      const success = await createDirectory(dirPath);
+      if (success) {
+        vscode.window.showInformationMessage(`Directory created: ${dirPath}`);
+      }
+    }),
+
+    vscode.commands.registerCommand('sebguru-assistant.createStructure', async () => {
+      // Get base path from user
+      const basePath = await vscode.window.showInputBox({
+        placeHolder: '/path/to/project',
+        prompt: 'Enter the base path for the project structure'
+      });
+
+      if (!basePath) {
+        return;
+      }
+
+      // Get project type from user
+      const projectType = await vscode.window.showQuickPick(
+        [
+          { label: 'Node.js', description: 'Basic Node.js project', value: 'nodejs' },
+          { label: 'React', description: 'React application', value: 'react' },
+          { label: 'Python', description: 'Python project', value: 'python' },
+          { label: 'Custom', description: 'Define custom structure with AI', value: 'custom' }
+        ],
+        { placeHolder: 'Select project type' }
+      );
+
+      if (!projectType) {
+        return;
+      }
+
+      let structure = [];
+
+      if (projectType.value === 'custom') {
+        // Get structure description from user
+        const description = await vscode.window.showInputBox({
+          placeHolder: 'Describe the project structure...',
+          prompt: 'Describe the project structure you want to create'
+        });
+
+        if (!description) {
+          return;
+        }
+
+        try {
+          // Show progress indicator
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Generating project structure...',
+            cancellable: false
+          }, async (progress) => {
+            progress.report({ increment: 0 });
+
+            // Generate structure using AI
+            const response = await client.makeRequest(
+              `Generate a project structure based on this description: ${description}.
+               Format the response as a valid JSON array that can be parsed directly.
+               Each item should have: "name" (string), "type" ("file" or "directory"), and optionally "content" (for files) or "children" (array, for directories).
+               Example: [{"name": "src", "type": "directory", "children": [{"name": "index.js", "type": "file", "content": "console.log('Hello')"}]}]`,
+              {
+                systemPrompt: `You are an expert in software architecture. Generate a valid JSON structure for a project based on the user's description.
+                               The JSON must be parseable and follow the specified format exactly. Do not include any explanations or markdown, just the JSON array.`,
+                temperature: 0.2
+              }
+            );
+
+            // Parse the response
+            try {
+              // Clean up the response (remove markdown code blocks if present)
+              const cleanedResponse = response.replace(/```json\n/g, '').replace(/```$/g, '').trim();
+              structure = JSON.parse(cleanedResponse);
+            } catch (parseError) {
+              throw new Error(`Failed to parse structure: ${parseError.message}`);
+            }
+
+            progress.report({ increment: 100 });
+          });
+        } catch (error) {
+          vscode.window.showErrorMessage(`Error generating project structure: ${error.message}`);
+          return;
+        }
+      } else if (projectType.value === 'nodejs') {
+        structure = [
+          { name: "src", type: "directory", children: [
+            { name: "index.js", type: "file", content: "console.log('Hello, Node.js!');" }
+          ]},
+          { name: "package.json", type: "file", content: '{\n  "name": "nodejs-project",\n  "version": "1.0.0",\n  "description": "A Node.js project",\n  "main": "src/index.js",\n  "scripts": {\n    "start": "node src/index.js",\n    "test": "echo \\"Error: no test specified\\" && exit 1"\n  },\n  "keywords": [],\n  "author": "",\n  "license": "ISC"\n}' },
+          { name: ".gitignore", type: "file", content: "node_modules/\n.env\n.DS_Store" },
+          { name: "README.md", type: "file", content: "# Node.js Project\n\nA simple Node.js project.\n\n## Installation\n\n```bash\nnpm install\n```\n\n## Usage\n\n```bash\nnpm start\n```" }
+        ];
+      } else if (projectType.value === 'react') {
+        structure = [
+          { name: "public", type: "directory", children: [
+            { name: "index.html", type: "file", content: '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="utf-8" />\n  <meta name="viewport" content="width=device-width, initial-scale=1" />\n  <title>React App</title>\n</head>\n<body>\n  <div id="root"></div>\n</body>\n</html>' }
+          ]},
+          { name: "src", type: "directory", children: [
+            { name: "App.js", type: "file", content: "import React from 'react';\n\nfunction App() {\n  return (\n    <div className=\"App\">\n      <header className=\"App-header\">\n        <h1>Welcome to React</h1>\n        <p>Edit <code>src/App.js</code> and save to reload.</p>\n      </header>\n    </div>\n  );\n}\n\nexport default App;" },
+            { name: "index.js", type: "file", content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\n\nconst root = ReactDOM.createRoot(document.getElementById('root'));\nroot.render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);" },
+            { name: "components", type: "directory", children: [] },
+            { name: "styles", type: "directory", children: [
+              { name: "App.css", type: "file", content: ".App {\n  text-align: center;\n}\n\n.App-header {\n  background-color: #282c34;\n  min-height: 100vh;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  font-size: calc(10px + 2vmin);\n  color: white;\n}" }
+            ]}
+          ]},
+          { name: "package.json", type: "file", content: '{\n  "name": "react-app",\n  "version": "0.1.0",\n  "private": true,\n  "dependencies": {\n    "react": "^18.2.0",\n    "react-dom": "^18.2.0"\n  },\n  "scripts": {\n    "start": "react-scripts start",\n    "build": "react-scripts build",\n    "test": "react-scripts test",\n    "eject": "react-scripts eject"\n  },\n  "eslintConfig": {\n    "extends": [\n      "react-app",\n      "react-app/jest"\n    ]\n  },\n  "browserslist": {\n    "production": [\n      ">0.2%",\n      "not dead",\n      "not op_mini all"\n    ],\n    "development": [\n      "last 1 chrome version",\n      "last 1 firefox version",\n      "last 1 safari version"\n    ]\n  }\n}' },
+          { name: ".gitignore", type: "file", content: "# dependencies\nnode_modules\n/.pnp\n.pnp.js\n\n# testing\n/coverage\n\n# production\n/build\n\n# misc\n.DS_Store\n.env.local\n.env.development.local\n.env.test.local\n.env.production.local\n\nnpm-debug.log*\nyarn-debug.log*\nyarn-error.log*" },
+          { name: "README.md", type: "file", content: "# React App\n\nThis project was bootstrapped with Create React App.\n\n## Available Scripts\n\nIn the project directory, you can run:\n\n### `npm start`\n\nRuns the app in the development mode.\nOpen [http://localhost:3000](http://localhost:3000) to view it in your browser." }
+        ];
+      } else if (projectType.value === 'python') {
+        structure = [
+          { name: "src", type: "directory", children: [
+            { name: "__init__.py", type: "file", content: "" },
+            { name: "main.py", type: "file", content: "def main():\n    print('Hello, Python!')\n\nif __name__ == '__main__':\n    main()" }
+          ]},
+          { name: "tests", type: "directory", children: [
+            { name: "__init__.py", type: "file", content: "" },
+            { name: "test_main.py", type: "file", content: "import unittest\nfrom src.main import main\n\nclass TestMain(unittest.TestCase):\n    def test_main(self):\n        # Add your test here\n        pass\n\nif __name__ == '__main__':\n    unittest.main()" }
+          ]},
+          { name: "requirements.txt", type: "file", content: "# Add your dependencies here" },
+          { name: "setup.py", type: "file", content: "from setuptools import setup, find_packages\n\nsetup(\n    name='python-project',\n    version='0.1.0',\n    packages=find_packages(),\n    install_requires=[\n        # Add your dependencies here\n    ],\n)" },
+          { name: ".gitignore", type: "file", content: "__pycache__/\n*.py[cod]\n*$py.class\n*.so\n.Python\nenv/\nbuild/\ndevelop-eggs/\ndist/\ndownloads/\neggs/\n.eggs/\nlib/\nlib64/\nparts/\nsdist/\nvar/\n*.egg-info/\n.installed.cfg\n*.egg" },
+          { name: "README.md", type: "file", content: "# Python Project\n\nA simple Python project.\n\n## Installation\n\n```bash\npip install -e .\n```\n\n## Usage\n\n```bash\npython -m src.main\n```" }
+        ];
+      }
+
+      // Create the project structure
+      const success = await createStructure(structure, basePath);
+      if (success) {
+        vscode.window.showInformationMessage(`Project structure created at: ${basePath}`);
+      }
+    }),
+
     vscode.commands.registerCommand('sebguru-assistant.runWorkflow', async () => {
       const workflows = [
         { label: 'Explain Code', id: 'explain-code' },
@@ -1064,7 +1300,93 @@ function deactivate() {
   console.log('SebGuru Assistant extension is now deactivated');
 }
 
+/**
+ * Create a file with the given path and content
+ * @param {string} filePath - The path of the file to create
+ * @param {string} content - The content to write to the file
+ * @returns {Promise<void>}
+ */
+async function createFile(filePath, content) {
+  try {
+    // Ensure the directory exists
+    const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+    await vscode.workspace.fs.createDirectory(vscode.Uri.file(dirPath));
+
+    // Create the file
+    const fileUri = vscode.Uri.file(filePath);
+    const encoder = new TextEncoder();
+    await vscode.workspace.fs.writeFile(fileUri, encoder.encode(content));
+
+    // Open the file in the editor
+    const document = await vscode.workspace.openTextDocument(fileUri);
+    await vscode.window.showTextDocument(document);
+
+    return true;
+  } catch (error) {
+    console.error(`Error creating file ${filePath}:`, error);
+    vscode.window.showErrorMessage(`Failed to create file: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Create a directory with the given path
+ * @param {string} dirPath - The path of the directory to create
+ * @returns {Promise<void>}
+ */
+async function createDirectory(dirPath) {
+  try {
+    const dirUri = vscode.Uri.file(dirPath);
+    await vscode.workspace.fs.createDirectory(dirUri);
+    return true;
+  } catch (error) {
+    console.error(`Error creating directory ${dirPath}:`, error);
+    vscode.window.showErrorMessage(`Failed to create directory: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Create a project structure based on a specification
+ * @param {object} structure - The structure specification
+ * @param {string} basePath - The base path for the structure
+ * @returns {Promise<boolean>} - Whether the structure was created successfully
+ */
+async function createStructure(structure, basePath) {
+  try {
+    // Create the base directory if it doesn't exist
+    await createDirectory(basePath);
+
+    // Process each item in the structure
+    for (const item of structure) {
+      const itemPath = `${basePath}/${item.name}`;
+
+      if (item.type === 'directory') {
+        // Create directory
+        await createDirectory(itemPath);
+
+        // Process children recursively
+        if (item.children && item.children.length > 0) {
+          await createStructure(item.children, itemPath);
+        }
+      } else if (item.type === 'file') {
+        // Create file with content
+        await createFile(itemPath, item.content || '');
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error creating structure at ${basePath}:`, error);
+    vscode.window.showErrorMessage(`Failed to create project structure: ${error.message}`);
+    return false;
+  }
+}
+
 module.exports = {
   activate,
-  deactivate
+  deactivate,
+  createFile,
+  createDirectory,
+  createStructure
 };

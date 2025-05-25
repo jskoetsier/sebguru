@@ -2,7 +2,7 @@
   "name": "sebguru-assistant",
   "displayName": "SebGuru Assistant",
   "description": "AI-assisted coding and agentic workflows powered by local LLMs or SebGuru",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "SebGuru",
   "author": {
     "name": "SebGuru Team"
@@ -50,6 +50,21 @@
       {
         "command": "sebguru-assistant.runWorkflow",
         "title": "AI: Run Agentic Workflow",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.createFile",
+        "title": "AI: Create File",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.createDirectory",
+        "title": "AI: Create Directory",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.createStructure",
+        "title": "AI: Create Project Structure",
         "icon": "resources/sebguru-icon.svg"
       }
     ],
