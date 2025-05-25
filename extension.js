@@ -9,10 +9,12 @@ class LLMClient {
     this.useLocalLLM = config.useLocalLLM;
     this.localLLMUrl = config.localLLMUrl;
     this.localLLMPath = config.localLLMPath;
+    this.apiHostname = config.apiHostname || 'api.sebguru.ai';
+    this.apiVersion = config.apiVersion || 'v1';
     this.apiKey = config.apiKey;
     this.model = config.model;
     this.maxTokens = config.maxTokens;
-    this.baseUrl = 'https://api.sebguru.ai/v1';
+    this.baseUrl = `https://${this.apiHostname}/${this.apiVersion}`;
   }
 
   /**
@@ -23,6 +25,20 @@ class LLMClient {
     this.useLocalLLM = config.useLocalLLM;
     this.localLLMUrl = config.localLLMUrl;
     this.localLLMPath = config.localLLMPath;
+
+    // Update API hostname and version if provided
+    if (config.apiHostname) {
+      this.apiHostname = config.apiHostname;
+      // Rebuild the base URL when hostname or version changes
+      this.baseUrl = `https://${this.apiHostname}/${this.apiVersion}`;
+    }
+
+    if (config.apiVersion) {
+      this.apiVersion = config.apiVersion;
+      // Rebuild the base URL when hostname or version changes
+      this.baseUrl = `https://${this.apiHostname}/${this.apiVersion}`;
+    }
+
     this.apiKey = config.apiKey;
     this.model = config.model;
     this.maxTokens = config.maxTokens;
@@ -708,6 +724,8 @@ function activate(context) {
   const useLocalLLM = config.get('useLocalLLM');
   const localLLMUrl = config.get('localLLMUrl');
   const localLLMPath = config.get('localLLMPath');
+  const apiHostname = config.get('apiHostname');
+  const apiVersion = config.get('apiVersion');
   const apiKey = config.get('apiKey');
   const model = config.get('model');
   const maxTokens = config.get('maxTokens');
@@ -717,6 +735,8 @@ function activate(context) {
     useLocalLLM,
     localLLMUrl,
     localLLMPath,
+    apiHostname,
+    apiVersion,
     apiKey,
     model,
     maxTokens
@@ -1001,6 +1021,8 @@ function activate(context) {
         const newUseLocalLLM = newConfig.get('useLocalLLM');
         const newLocalLLMUrl = newConfig.get('localLLMUrl');
         const newLocalLLMPath = newConfig.get('localLLMPath');
+        const newApiHostname = newConfig.get('apiHostname');
+        const newApiVersion = newConfig.get('apiVersion');
         const newApiKey = newConfig.get('apiKey');
         const newModel = newConfig.get('model');
         const newMaxTokens = newConfig.get('maxTokens');
@@ -1010,6 +1032,8 @@ function activate(context) {
           useLocalLLM: newUseLocalLLM,
           localLLMUrl: newLocalLLMUrl,
           localLLMPath: newLocalLLMPath,
+          apiHostname: newApiHostname,
+          apiVersion: newApiVersion,
           apiKey: newApiKey,
           model: newModel,
           maxTokens: newMaxTokens

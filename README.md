@@ -16,7 +16,9 @@ A powerful VS Code extension that brings AI-assisted coding to your development 
    - **Local LLM** (Default): Uses your locally running LLM server
    - **SebGuru Cloud**: Connect to SebGuru's optimized code models
 
-## Using Local LLMs
+## Configuration Options
+
+### Local LLM Setup
 
 SebGuru Assistant works seamlessly with popular local LLM solutions:
 
@@ -25,6 +27,19 @@ SebGuru Assistant works seamlessly with popular local LLM solutions:
 - **LocalAI**: Self-host your preferred models
 
 Configure your local LLM connection in Settings → SebGuru Assistant.
+
+### Custom API Endpoints
+
+You can connect to different SebGuru API endpoints:
+
+- **API Hostname**: Change the hostname for SebGuru API (default: api.sebguru.ai)
+- **API Version**: Specify the API version to use (default: v1)
+- **API Key**: Your personal SebGuru API key
+
+This flexibility allows you to use:
+- Custom SebGuru deployments
+- Self-hosted SebGuru instances
+- Development or staging environments
 
 ## Commands
 

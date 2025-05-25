@@ -2,7 +2,15 @@
   "name": "sebguru-assistant",
   "displayName": "SebGuru Assistant",
   "description": "AI-assisted coding and agentic workflows powered by local LLMs or SebGuru",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "publisher": "SebGuru",
+  "author": {
+    "name": "SebGuru Team"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sebguru/sebguru-assistant"
+  },
   "icon": "resources/sebguru-icon.png",
   "engines": {
     "vscode": "^1.80.0"
@@ -62,6 +70,16 @@
           "type": "string",
           "default": "/v1/chat/completions",
           "description": "API endpoint path for the locally running LLM server"
+        },
+        "sebguru-assistant.apiHostname": {
+          "type": "string",
+          "default": "api.sebguru.ai",
+          "description": "API hostname for SebGuru services (only needed if not using local LLM)"
+        },
+        "sebguru-assistant.apiVersion": {
+          "type": "string",
+          "default": "v1",
+          "description": "API version for SebGuru services (only needed if not using local LLM)"
         },
         "sebguru-assistant.apiKey": {
           "type": "string",
