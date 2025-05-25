@@ -1,12 +1,12 @@
 # SebGuru Assistant
 
-A powerful VS Code extension that brings AI-assisted coding to your development workflow. SebGuru Assistant helps you write, understand, and improve code more efficiently using either a local LLM or the SebGuru cloud service.
+A powerful VS Code extension that brings AI-assisted coding to your development workflow. SebGuru Assistant helps you write, understand, and improve code more efficiently using either a local LLM or a custom API endpoint.
 
 ## Key Features
 
 - **AI Chat Interface**: Get instant coding help through a convenient chat panel
 - **Code Intelligence**: Explain, improve, document, test, and refactor your code with AI assistance
-- **Flexible Configuration**: Use your own local LLM models or connect to SebGuru's cloud service
+- **Flexible Configuration**: Use your own local LLM models or connect to custom API endpoints
 - **Context-Aware**: The assistant understands your code's language and provides relevant suggestions
 
 ## Quick Start
@@ -14,7 +14,7 @@ A powerful VS Code extension that brings AI-assisted coding to your development 
 1. **Installation**: Install the extension from the VS Code marketplace or via VSIX
 2. **Choose Your AI Backend**:
    - **Local LLM** (Default): Uses your locally running LLM server
-   - **SebGuru Cloud**: Connect to SebGuru's optimized code models
+   - **Remote API**: Connect to a custom API endpoint
 
 ## Configuration Options
 
@@ -30,15 +30,15 @@ Configure your local LLM connection in Settings → SebGuru Assistant.
 
 ### Custom API Endpoints
 
-You can connect to different SebGuru API endpoints:
+You can connect to different API endpoints:
 
-- **API Hostname**: Change the hostname for SebGuru API (default: api.sebguru.ai)
+- **API Hostname**: Change the hostname for the API (default: localhost:3000)
 - **API Version**: Specify the API version to use (default: v1)
-- **API Key**: Your personal SebGuru API key
+- **API Key**: Your personal API key
 
 This flexibility allows you to use:
-- Custom SebGuru deployments
-- Self-hosted SebGuru instances
+- Custom API deployments
+- Self-hosted LLM instances
 - Development or staging environments
 
 ## Commands
@@ -51,14 +51,14 @@ This flexibility allows you to use:
 
 ## Privacy & Security
 
-When using local LLMs, your code never leaves your machine. Cloud mode requires a SebGuru API key and sends code to SebGuru's secure processing servers.
+When using local LLMs, your code never leaves your machine. Cloud mode requires an API key and sends code to the configured API endpoint for processing.
 
 ## Requirements
 
 - VS Code 1.80.0+
 - For local mode: A running LLM server
-- For cloud mode: SebGuru API key
+- For cloud mode: API key for your chosen service
 
 ## Learn More
 
-Visit [sebguru.ai](https://sebguru.ai) for documentation, API keys, and community resources.
+Visit the GitHub repository for documentation, examples, and community resources.

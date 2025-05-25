@@ -2,7 +2,7 @@
 
 All notable changes to the "SebGuru Assistant" extension will be documented in this file.
 
-## [0.3.0] - 2023-08-01
+## [0.3.0] - 2023-08-15
 
 ### Added
 - Custom API hostname configuration option
@@ -12,9 +12,8 @@ All notable changes to the "SebGuru Assistant" extension will be documented in t
 - More detailed changelog entries
 
 ### Changed
-- Complete rebranding from DeepSek to SebGuru
 - Updated all API endpoints to use configurable domains
-- Refreshed UI with new SebGuru color scheme
+- Refreshed UI with new color scheme
 - Simplified README with clearer instructions
 - Improved configuration options descriptions
 - Enhanced error handling for API connectivity issues
@@ -23,7 +22,7 @@ All notable changes to the "SebGuru Assistant" extension will be documented in t
 - API URL construction for different environments
 - Configuration update handling
 
-## [0.2.0] - 2023-07-20
+## [0.2.0] - 2023-08-01
 
 ### Added
 - Support for local LLM integration

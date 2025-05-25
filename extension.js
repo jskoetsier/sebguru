@@ -9,7 +9,7 @@ class LLMClient {
     this.useLocalLLM = config.useLocalLLM;
     this.localLLMUrl = config.localLLMUrl;
     this.localLLMPath = config.localLLMPath;
-    this.apiHostname = config.apiHostname || 'api.sebguru.ai';
+    this.apiHostname = config.apiHostname || 'localhost:3000';
     this.apiVersion = config.apiVersion || 'v1';
     this.apiKey = config.apiKey;
     this.model = config.model;

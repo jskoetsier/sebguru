@@ -73,7 +73,7 @@
         },
         "sebguru-assistant.apiHostname": {
           "type": "string",
-          "default": "api.sebguru.ai",
+          "default": "localhost:3000",
           "description": "API hostname for SebGuru services (only needed if not using local LLM)"
         },
         "sebguru-assistant.apiVersion": {
