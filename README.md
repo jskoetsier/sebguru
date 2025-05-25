@@ -55,6 +55,14 @@ This flexibility allows you to use:
 - **AI: Create Directory** - Create a new directory
 - **AI: Create Project Structure** - Generate complete project structures with templates
 
+### Code Modification
+- **AI: Modify File** - Edit existing files with AI assistance
+- **AI: Insert Code** - Insert AI-generated code at cursor position
+
+### Code Testing & Execution
+- **AI: Test Code** - Generate and run tests for selected code
+- **AI: Execute Code** - Run code directly from the editor
+
 ### Innovation
 - **AI: Suggest Features** - Get AI-powered feature and improvement suggestions
 
@@ -88,6 +96,79 @@ When creating files, you can:
 - Have the AI generate content based on your description
 
 The AI will automatically adapt to the file type based on the extension, generating appropriate content for JavaScript, Python, HTML, CSS, and many other file types.
+
+## Code Modification
+
+The extension provides powerful tools for modifying existing code:
+
+### Modifying Files with AI
+
+Easily modify existing files with AI assistance:
+
+1. Run the "AI: Modify File" command from the command palette
+2. Select the file to modify (or uses the current file if one is open)
+3. Choose how you want to modify the file:
+   - **Replace Entire Content**: Manually enter new content
+   - **Modify with AI**: Describe the changes you want to make
+
+When using AI to modify files:
+1. Enter a description of the changes you want to make
+2. The AI analyzes the current file content and applies your requested changes
+3. The modified file is opened in the editor for review
+
+### Inserting Code at Cursor Position
+
+Insert code at the current cursor position:
+
+1. Position your cursor where you want to insert code
+2. Run the "AI: Insert Code" command from the command palette
+3. Choose how you want to insert code:
+   - **Enter Code Manually**: Type or paste the code to insert
+   - **Generate with AI**: Have the AI generate code based on your description
+
+When generating code with AI:
+1. Enter a description of the code you want to insert
+2. The AI analyzes the surrounding code for context
+3. The generated code is inserted at the cursor position
+
+## Code Testing & Execution
+
+The extension provides tools for testing and executing code directly from the editor:
+
+### Testing Code
+
+Generate and run tests for your code:
+
+1. Select the code you want to test (or the entire file will be used)
+2. Run the "AI: Test Code" command from the command palette
+3. The AI will:
+   - Generate appropriate unit tests for your code
+   - Create temporary test files
+   - Run the tests in a terminal window
+   - Show the test code in a new editor tab
+
+The test generation is language-aware and will use the appropriate testing framework:
+- JavaScript: Mocha
+- TypeScript: Mocha with ts-node
+- Python: unittest
+- Ruby: Test::Unit
+
+### Executing Code
+
+Run code directly from the editor:
+
+1. Select the code you want to execute (or the entire file will be used)
+2. Run the "AI: Execute Code" command from the command palette
+3. The code will be:
+   - Saved to a temporary file
+   - Executed in a terminal window with the appropriate runtime
+
+Supported languages:
+- JavaScript (Node.js)
+- TypeScript (ts-node)
+- Python
+- Ruby
+- Shell scripts (Bash)
 
 ## Feature Suggestion System
 

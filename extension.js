@@ -1347,6 +1347,302 @@ function activate(context) {
       }
     }),
 
+    vscode.commands.registerCommand('sebguru-assistant.modifyFile', async () => {
+      // Get file path from user
+      const editor = vscode.window.activeTextEditor;
+      let filePath;
+
+      if (editor) {
+        // Use the current file as default
+        filePath = editor.document.uri.fsPath;
+      } else {
+        // Ask for file path
+        filePath = await vscode.window.showInputBox({
+          placeHolder: '/path/to/file.ext',
+          prompt: 'Enter the path of the file to modify'
+        });
+
+        if (!filePath) {
+          return;
+        }
+      }
+
+      // Get modification type from user
+      const modificationType = await vscode.window.showQuickPick(
+        [
+          { label: 'Replace Entire Content', description: 'Replace the entire file content', value: 'replace' },
+          { label: 'Modify with AI', description: 'Use AI to modify the file content', value: 'ai' }
+        ],
+        { placeHolder: 'How do you want to modify the file?' }
+      );
+
+      if (!modificationType) {
+        return;
+      }
+
+      try {
+        // Read the current file content
+        const fileUri = vscode.Uri.file(filePath);
+        const fileContent = new TextDecoder().decode(await vscode.workspace.fs.readFile(fileUri));
+
+        let newContent = '';
+
+        if (modificationType.value === 'replace') {
+          // Get new content from user
+          newContent = await vscode.window.showInputBox({
+            placeHolder: 'New file content...',
+            prompt: 'Enter the new content for the file',
+            multiline: true,
+            value: fileContent
+          });
+
+          if (newContent === undefined) {
+            return;
+          }
+        } else if (modificationType.value === 'ai') {
+          // Get modification instructions from user
+          const instructions = await vscode.window.showInputBox({
+            placeHolder: 'Describe how to modify the file...',
+            prompt: 'Describe how you want the AI to modify the file'
+          });
+
+          if (!instructions) {
+            return;
+          }
+
+          // Show progress indicator
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Modifying file with AI...',
+            cancellable: false
+          }, async (progress) => {
+            progress.report({ increment: 0 });
+
+            // Get file extension
+            const fileExtension = filePath.split('.').pop() || '';
+
+            // Generate modified content using AI
+            newContent = await client.makeRequestWithFileContext(
+              `Modify this ${fileExtension} file according to these instructions: ${instructions}`,
+              fileContent,
+              filePath.split('/').pop(),
+              {
+                systemPrompt: `You are an expert programmer. Modify the provided ${fileExtension} file according to the user's instructions.
+                               Return the complete modified file content, not just the changes.
+                               Do not include markdown code blocks or explanations, just output the raw file content.`,
+                temperature: 0.2
+              }
+            );
+
+            // Clean up the content (remove markdown code blocks if present)
+            newContent = newContent.replace(/```[\w]*\n/g, '').replace(/```$/g, '').trim();
+
+            progress.report({ increment: 100 });
+          });
+        }
+
+        // Modify the file
+        const success = await modifyFile(filePath, newContent);
+        if (success) {
+          vscode.window.showInformationMessage(`File modified: ${filePath}`);
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error modifying file: ${error.message}`);
+      }
+    }),
+
+    vscode.commands.registerCommand('sebguru-assistant.insertCode', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showInformationMessage('No active editor');
+        return;
+      }
+
+      // Get insertion position
+      const position = editor.selection.active;
+      const filePath = editor.document.uri.fsPath;
+
+      // Get code source
+      const codeSource = await vscode.window.showQuickPick(
+        [
+          { label: 'Enter Code Manually', description: 'Enter code to insert manually', value: 'manual' },
+          { label: 'Generate with AI', description: 'Generate code to insert using AI', value: 'ai' }
+        ],
+        { placeHolder: 'How do you want to insert code?' }
+      );
+
+      if (!codeSource) {
+        return;
+      }
+
+      let code = '';
+
+      if (codeSource.value === 'manual') {
+        // Get code from user
+        code = await vscode.window.showInputBox({
+          placeHolder: 'Code to insert...',
+          prompt: 'Enter the code to insert',
+          multiline: true
+        });
+
+        if (code === undefined) {
+          return;
+        }
+      } else if (codeSource.value === 'ai') {
+        // Get code description from user
+        const description = await vscode.window.showInputBox({
+          placeHolder: 'Describe the code to generate...',
+          prompt: 'Describe the code you want to insert'
+        });
+
+        if (!description) {
+          return;
+        }
+
+        // Show progress indicator
+        await vscode.window.withProgress({
+          location: vscode.ProgressLocation.Notification,
+          title: 'Generating code to insert...',
+          cancellable: false
+        }, async (progress) => {
+          progress.report({ increment: 0 });
+
+          // Get file context
+          const fileContent = editor.document.getText();
+          const fileName = filePath.split('/').pop();
+          const fileExtension = fileName.split('.').pop() || '';
+
+          // Generate code using AI
+          code = await client.makeRequestWithFileContext(
+            `Generate code to insert at the current cursor position based on this description: ${description}
+             The code should be compatible with the existing file and should be ready to insert without any modifications.`,
+            fileContent,
+            fileName,
+            {
+              systemPrompt: `You are an expert programmer. Generate ${fileExtension} code that can be inserted at the specified position in the file.
+                             The code should be compatible with the existing file and follow the same style and conventions.
+                             Do not include markdown code blocks or explanations, just output the raw code to insert.`,
+              temperature: 0.2
+            }
+          );
+
+          // Clean up the content (remove markdown code blocks if present)
+          code = code.replace(/```[\w]*\n/g, '').replace(/```$/g, '').trim();
+
+          progress.report({ increment: 100 });
+        });
+      }
+
+      // Insert the code
+      const success = await insertCode(filePath, position, code);
+      if (success) {
+        vscode.window.showInformationMessage('Code inserted successfully');
+      }
+    }),
+
+    vscode.commands.registerCommand('sebguru-assistant.testCode', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showInformationMessage('No active editor');
+        return;
+      }
+
+      // Get the code to test
+      const selection = editor.selection;
+      const selectedText = editor.document.getText(selection);
+      const code = selectedText || editor.document.getText();
+
+      if (!code) {
+        vscode.window.showInformationMessage('No code to test');
+        return;
+      }
+
+      // Get file information
+      const filePath = editor.document.uri.fsPath;
+      const fileName = filePath.split('/').pop();
+      const fileExtension = fileName.split('.').pop() || '';
+
+      // Show progress indicator
+      await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Generating tests...',
+        cancellable: false
+      }, async (progress) => {
+        progress.report({ increment: 0 });
+
+        try {
+          // Generate test code using AI
+          const testCode = await client.makeRequestWithFileContext(
+            'Generate comprehensive unit tests for this code:',
+            code,
+            fileName,
+            {
+              systemPrompt: `You are an expert in test-driven development. Generate comprehensive unit tests for the provided ${fileExtension} code.
+                             Include tests for edge cases and error conditions. The tests should be ready to run without any modifications.
+                             Use the appropriate testing framework for the language (e.g., Jest for JavaScript, pytest for Python).
+                             Do not include markdown code blocks or explanations, just output the raw test code.`,
+              temperature: 0.2
+            }
+          );
+
+          // Clean up the test code (remove markdown code blocks if present)
+          const cleanTestCode = testCode.replace(/```[\w]*\n/g, '').replace(/```$/g, '').trim();
+
+          progress.report({ increment: 50 });
+
+          // Run the tests
+          const success = await testCode(code, cleanTestCode, fileExtension);
+
+          if (success) {
+            // Show the test code in a new editor
+            const document = await vscode.workspace.openTextDocument({
+              content: cleanTestCode,
+              language: fileExtension
+            });
+
+            await vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.Beside });
+          }
+
+          progress.report({ increment: 100 });
+        } catch (error) {
+          vscode.window.showErrorMessage(`Error testing code: ${error.message}`);
+        }
+      });
+    }),
+
+    vscode.commands.registerCommand('sebguru-assistant.executeCode', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showInformationMessage('No active editor');
+        return;
+      }
+
+      // Get the code to execute
+      const selection = editor.selection;
+      const selectedText = editor.document.getText(selection);
+      const code = selectedText || editor.document.getText();
+
+      if (!code) {
+        vscode.window.showInformationMessage('No code to execute');
+        return;
+      }
+
+      // Get file information
+      const filePath = editor.document.uri.fsPath;
+      const fileName = filePath.split('/').pop();
+      const fileExtension = fileName.split('.').pop() || '';
+
+      try {
+        // Execute the code
+        const success = await executeCode(code, fileExtension);
+        if (success) {
+          vscode.window.showInformationMessage('Code execution started in terminal');
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error executing code: ${error.message}`);
+      }
+    }),
+
     vscode.commands.registerCommand('sebguru-assistant.runWorkflow', async () => {
       const workflows = [
         { label: 'Explain Code', id: 'explain-code' },
@@ -1556,10 +1852,207 @@ async function createStructure(structure, basePath) {
   }
 }
 
+/**
+ * Modify an existing file with new content
+ * @param {string} filePath - The path of the file to modify
+ * @param {string} newContent - The new content for the file
+ * @returns {Promise<boolean>} - Whether the file was modified successfully
+ */
+async function modifyFile(filePath, newContent) {
+  try {
+    // Check if the file exists
+    const fileUri = vscode.Uri.file(filePath);
+    try {
+      await vscode.workspace.fs.stat(fileUri);
+    } catch (error) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    // Write the new content to the file
+    const encoder = new TextEncoder();
+    await vscode.workspace.fs.writeFile(fileUri, encoder.encode(newContent));
+
+    // Open the file in the editor
+    const document = await vscode.workspace.openTextDocument(fileUri);
+    await vscode.window.showTextDocument(document);
+
+    return true;
+  } catch (error) {
+    console.error(`Error modifying file ${filePath}:`, error);
+    vscode.window.showErrorMessage(`Failed to modify file: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Insert code at a specific position in a file
+ * @param {string} filePath - The path of the file to modify
+ * @param {vscode.Position} position - The position to insert the code
+ * @param {string} code - The code to insert
+ * @returns {Promise<boolean>} - Whether the code was inserted successfully
+ */
+async function insertCode(filePath, position, code) {
+  try {
+    // Check if the file exists
+    const fileUri = vscode.Uri.file(filePath);
+    try {
+      await vscode.workspace.fs.stat(fileUri);
+    } catch (error) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    // Open the file in the editor
+    const document = await vscode.workspace.openTextDocument(fileUri);
+    const editor = await vscode.window.showTextDocument(document);
+
+    // Insert the code at the specified position
+    await editor.edit(editBuilder => {
+      editBuilder.insert(position, code);
+    });
+
+    return true;
+  } catch (error) {
+    console.error(`Error inserting code into ${filePath}:`, error);
+    vscode.window.showErrorMessage(`Failed to insert code: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Execute code in a terminal
+ * @param {string} code - The code to execute
+ * @param {string} language - The programming language of the code
+ * @returns {Promise<boolean>} - Whether the code was executed successfully
+ */
+async function executeCode(code, language) {
+  try {
+    // Create a temporary file for the code
+    const tempDir = vscode.workspace.workspaceFolders[0].uri.fsPath + '/.sebguru-temp';
+    await createDirectory(tempDir);
+
+    let tempFilePath;
+    let command;
+
+    // Determine file extension and execution command based on language
+    switch (language.toLowerCase()) {
+      case 'javascript':
+      case 'js':
+        tempFilePath = `${tempDir}/temp.js`;
+        command = `node "${tempFilePath}"`;
+        break;
+      case 'typescript':
+      case 'ts':
+        tempFilePath = `${tempDir}/temp.ts`;
+        command = `npx ts-node "${tempFilePath}"`;
+        break;
+      case 'python':
+      case 'py':
+        tempFilePath = `${tempDir}/temp.py`;
+        command = `python "${tempFilePath}"`;
+        break;
+      case 'ruby':
+      case 'rb':
+        tempFilePath = `${tempDir}/temp.rb`;
+        command = `ruby "${tempFilePath}"`;
+        break;
+      case 'shell':
+      case 'sh':
+      case 'bash':
+        tempFilePath = `${tempDir}/temp.sh`;
+        command = `bash "${tempFilePath}"`;
+        break;
+      default:
+        throw new Error(`Unsupported language: ${language}`);
+    }
+
+    // Write the code to the temporary file
+    await createFile(tempFilePath, code);
+
+    // Create a terminal and run the command
+    const terminal = vscode.window.createTerminal('Code Execution');
+    terminal.show();
+    terminal.sendText(command);
+
+    return true;
+  } catch (error) {
+    console.error(`Error executing code:`, error);
+    vscode.window.showErrorMessage(`Failed to execute code: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Run tests for code
+ * @param {string} code - The code to test
+ * @param {string} testCode - The test code
+ * @param {string} language - The programming language of the code
+ * @returns {Promise<boolean>} - Whether the tests were run successfully
+ */
+async function testCode(code, testCode, language) {
+  try {
+    // Create a temporary directory for the code and tests
+    const tempDir = vscode.workspace.workspaceFolders[0].uri.fsPath + '/.sebguru-temp';
+    await createDirectory(tempDir);
+
+    let codeFilePath;
+    let testFilePath;
+    let command;
+
+    // Determine file extensions and test command based on language
+    switch (language.toLowerCase()) {
+      case 'javascript':
+      case 'js':
+        codeFilePath = `${tempDir}/code.js`;
+        testFilePath = `${tempDir}/test.js`;
+        command = `cd "${tempDir}" && npx mocha test.js`;
+        break;
+      case 'typescript':
+      case 'ts':
+        codeFilePath = `${tempDir}/code.ts`;
+        testFilePath = `${tempDir}/test.ts`;
+        command = `cd "${tempDir}" && npx mocha -r ts-node/register test.ts`;
+        break;
+      case 'python':
+      case 'py':
+        codeFilePath = `${tempDir}/code.py`;
+        testFilePath = `${tempDir}/test_code.py`;
+        command = `cd "${tempDir}" && python -m unittest test_code.py`;
+        break;
+      case 'ruby':
+      case 'rb':
+        codeFilePath = `${tempDir}/code.rb`;
+        testFilePath = `${tempDir}/test_code.rb`;
+        command = `cd "${tempDir}" && ruby test_code.rb`;
+        break;
+      default:
+        throw new Error(`Unsupported language for testing: ${language}`);
+    }
+
+    // Write the code and test code to temporary files
+    await createFile(codeFilePath, code);
+    await createFile(testFilePath, testCode);
+
+    // Create a terminal and run the test command
+    const terminal = vscode.window.createTerminal('Code Testing');
+    terminal.show();
+    terminal.sendText(command);
+
+    return true;
+  } catch (error) {
+    console.error(`Error testing code:`, error);
+    vscode.window.showErrorMessage(`Failed to test code: ${error.message}`);
+    return false;
+  }
+}
+
 module.exports = {
   activate,
   deactivate,
   createFile,
   createDirectory,
-  createStructure
+  createStructure,
+  modifyFile,
+  insertCode,
+  executeCode,
+  testCode
 };

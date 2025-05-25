@@ -2,6 +2,21 @@
 
 All notable changes to the "SebGuru Assistant" extension will be documented in this file.
 
+## [0.6.0] - 2023-08-30
+
+### Added
+- Direct code writing capabilities:
+  - Modify existing files with AI assistance
+  - Insert AI-generated code at cursor position
+  - Replace entire file content or make targeted changes
+- Code testing and execution features:
+  - Generate and run unit tests for selected code
+  - Execute code directly from the editor
+  - Support for multiple languages (JavaScript, TypeScript, Python, Ruby, Shell)
+  - Automatic test framework detection based on file type
+- Temporary file management for testing and execution
+- Terminal integration for running tests and code
+
 ## [0.5.0] - 2023-08-25
 
 ### Added
