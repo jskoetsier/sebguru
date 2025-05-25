@@ -1,0 +1,159 @@
+{
+  "name": "sebguru-assistant",
+  "displayName": "SebGuru Assistant",
+  "description": "AI-assisted coding and agentic workflows powered by local LLMs or SebGuru",
+  "version": "0.2.0",
+  "icon": "resources/sebguru-icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages",
+    "Snippets",
+    "Machine Learning"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sebguru-assistant.askAI",
+        "title": "Ask AI Assistant",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.explainCode",
+        "title": "AI: Explain Code",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.improveCode",
+        "title": "AI: Improve Code",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.generateCode",
+        "title": "AI: Generate Code",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.runWorkflow",
+        "title": "AI: Run Agentic Workflow",
+        "icon": "resources/sebguru-icon.svg"
+      }
+    ],
+    "configuration": {
+      "title": "SebGuru Assistant",
+      "properties": {
+        "sebguru-assistant.useLocalLLM": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use a locally running LLM instead of SebGuru API"
+        },
+        "sebguru-assistant.localLLMUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "URL of the locally running LLM server"
+        },
+        "sebguru-assistant.localLLMPath": {
+          "type": "string",
+          "default": "/v1/chat/completions",
+          "description": "API endpoint path for the locally running LLM server"
+        },
+        "sebguru-assistant.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API Key for SebGuru services (only needed if not using local LLM)"
+        },
+        "sebguru-assistant.model": {
+          "type": "string",
+          "default": "local-model",
+          "enum": [
+            "local-model",
+            "sebguru-latest",
+            "sebguru-fast",
+            "sebguru-pro"
+          ],
+          "description": "Model to use for AI assistance"
+        },
+        "sebguru-assistant.maxTokens": {
+          "type": "number",
+          "default": 2048,
+          "description": "Maximum tokens to generate in responses"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ai-explorer",
+          "title": "SebGuru Assistant",
+          "icon": "resources/sebguru-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "ai-explorer": [
+        {
+          "id": "aiChat",
+          "name": "Chat",
+          "icon": "resources/sebguru-icon.svg"
+        },
+        {
+          "id": "aiWorkflows",
+          "name": "Workflows",
+          "icon": "resources/sebguru-icon.svg"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "sebguru-assistant.explainCode",
+          "when": "editorHasSelection",
+          "group": "codeAssistant",
+          "icon": "resources/sebguru-icon.svg"
+        },
+        {
+          "command": "sebguru-assistant.improveCode",
+          "when": "editorHasSelection",
+          "group": "codeAssistant",
+          "icon": "resources/sebguru-icon.svg"
+        },
+        {
+          "command": "sebguru-assistant.generateCode",
+          "group": "codeAssistant",
+          "icon": "resources/sebguru-icon.svg"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./extension.js --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.80.0",
+    "@vscode/test-electron": "^2.3.4",
+    "esbuild": "^0.18.11",
+    "eslint": "^8.45.0",
+    "glob": "^10.3.3",
+    "mocha": "^10.2.0",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "openai": "^4.0.0"
+  }
+}
