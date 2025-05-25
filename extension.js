@@ -1174,6 +1174,179 @@ function activate(context) {
       }
     }),
 
+    vscode.commands.registerCommand('sebguru-assistant.suggestFeatures', async () => {
+      // Get context for feature suggestions
+      const contextType = await vscode.window.showQuickPick(
+        [
+          { label: 'Current Project', description: 'Analyze current project for feature suggestions', value: 'project' },
+          { label: 'Selected Code', description: 'Suggest features based on selected code', value: 'selection' },
+          { label: 'General Ideas', description: 'Get general feature suggestions', value: 'general' }
+        ],
+        { placeHolder: 'What kind of feature suggestions would you like?' }
+      );
+
+      if (!contextType) {
+        return;
+      }
+
+      let context = '';
+      let prompt = '';
+      let systemPrompt = '';
+
+      if (contextType.value === 'project') {
+        // Get project information
+        try {
+          // Show progress indicator
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Analyzing project structure...',
+            cancellable: false
+          }, async (progress) => {
+            progress.report({ increment: 0 });
+
+            // Get workspace folders
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders || workspaceFolders.length === 0) {
+              throw new Error('No workspace folder is open');
+            }
+
+            // Get root folder
+            const rootFolder = workspaceFolders[0].uri.fsPath;
+
+            // Get package.json if it exists
+            let packageJson = null;
+            try {
+              const packageJsonUri = vscode.Uri.file(`${rootFolder}/package.json`);
+              const packageJsonContent = await vscode.workspace.fs.readFile(packageJsonUri);
+              packageJson = JSON.parse(new TextDecoder().decode(packageJsonContent));
+            } catch (error) {
+              // No package.json or couldn't parse it
+            }
+
+            // Get file list (limit to 50 files to avoid overwhelming the AI)
+            const fileList = [];
+            const filePattern = new vscode.RelativePattern(rootFolder, '**/*');
+            const fileUris = await vscode.workspace.findFiles(filePattern, '**/node_modules/**', 50);
+
+            for (const uri of fileUris) {
+              fileList.push(uri.fsPath.replace(rootFolder, ''));
+            }
+
+            // Build context
+            context = `Project structure:\n${fileList.join('\n')}\n\n`;
+            if (packageJson) {
+              context += `package.json:\n${JSON.stringify(packageJson, null, 2)}\n\n`;
+            }
+
+            progress.report({ increment: 100 });
+          });
+
+          prompt = `Based on the following project structure, suggest new features, improvements, or ideas that could enhance this project:\n\n${context}`;
+          systemPrompt = `You are an expert software architect and developer. Analyze the provided project structure and suggest valuable features, improvements, or ideas that could enhance the project.
+                          Focus on practical, implementable suggestions that would add real value. For each suggestion, provide:
+                          1. A clear title
+                          2. A brief description of the feature/improvement
+                          3. Why it would be valuable
+                          4. A basic implementation approach`;
+        } catch (error) {
+          vscode.window.showErrorMessage(`Error analyzing project: ${error.message}`);
+          return;
+        }
+      } else if (contextType.value === 'selection') {
+        // Get selected code
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showInformationMessage('No active editor');
+          return;
+        }
+
+        const selection = editor.selection;
+        const selectedText = editor.document.getText(selection);
+
+        if (!selectedText) {
+          vscode.window.showInformationMessage('No text selected');
+          return;
+        }
+
+        const fileName = editor.document.fileName.split('/').pop();
+        context = `Selected code from ${fileName}:\n\n${selectedText}`;
+        prompt = `Based on the following code, suggest new features, improvements, or ideas that could enhance this code or the functionality it represents:\n\n${context}`;
+        systemPrompt = `You are an expert software developer. Analyze the provided code and suggest valuable features, improvements, or ideas that could enhance it.
+                        Focus on practical, implementable suggestions that would add real value. For each suggestion, provide:
+                        1. A clear title
+                        2. A brief description of the feature/improvement
+                        3. Why it would be valuable
+                        4. A basic implementation approach`;
+      } else {
+        // General ideas
+        const projectType = await vscode.window.showQuickPick(
+          [
+            { label: 'Web Application', value: 'web' },
+            { label: 'Mobile App', value: 'mobile' },
+            { label: 'Desktop Application', value: 'desktop' },
+            { label: 'API/Backend Service', value: 'api' },
+            { label: 'Data Science/ML Project', value: 'data' },
+            { label: 'DevOps/Infrastructure', value: 'devops' },
+            { label: 'Other/General', value: 'general' }
+          ],
+          { placeHolder: 'What type of project are you working on?' }
+        );
+
+        if (!projectType) {
+          return;
+        }
+
+        // Get additional context
+        const additionalContext = await vscode.window.showInputBox({
+          placeHolder: 'Any specific areas of interest? (optional)',
+          prompt: 'Enter any specific areas you want feature suggestions for'
+        });
+
+        context = `Project type: ${projectType.label}\nAreas of interest: ${additionalContext || 'General improvements'}`;
+        prompt = `Suggest innovative and practical features, improvements, or ideas for a ${projectType.label} project${additionalContext ? ' focusing on ' + additionalContext : ''}.`;
+        systemPrompt = `You are an expert software architect with deep knowledge of ${projectType.label} development.
+                        Suggest 5-7 innovative yet practical features or improvements that would enhance a ${projectType.label} project.
+                        For each suggestion, provide:
+                        1. A clear title
+                        2. A brief description of the feature/improvement
+                        3. Why it would be valuable
+                        4. A basic implementation approach
+                        5. Potential technologies or libraries to consider`;
+      }
+
+      try {
+        // Show progress indicator
+        await vscode.window.withProgress({
+          location: vscode.ProgressLocation.Notification,
+          title: 'Generating feature suggestions...',
+          cancellable: false
+        }, async (progress) => {
+          progress.report({ increment: 0 });
+
+          // Get suggestions from AI
+          const response = await client.makeRequest(prompt, {
+            systemPrompt: systemPrompt,
+            temperature: 0.7,
+            maxTokens: 4096
+          });
+
+          progress.report({ increment: 100 });
+
+          // Show results in a new editor
+          const document = await vscode.workspace.openTextDocument({
+            content: `# Feature Suggestions\n\n${response}`,
+            language: 'markdown'
+          });
+
+          await vscode.window.showTextDocument(document, { viewColumn: vscode.ViewColumn.Beside });
+
+          return response;
+        });
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating feature suggestions: ${error.message}`);
+      }
+    }),
+
     vscode.commands.registerCommand('sebguru-assistant.runWorkflow', async () => {
       const workflows = [
         { label: 'Explain Code', id: 'explain-code' },

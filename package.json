@@ -2,7 +2,7 @@
   "name": "sebguru-assistant",
   "displayName": "SebGuru Assistant",
   "description": "AI-assisted coding and agentic workflows powered by local LLMs or SebGuru",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "SebGuru",
   "author": {
     "name": "SebGuru Team"
@@ -65,6 +65,11 @@
       {
         "command": "sebguru-assistant.createStructure",
         "title": "AI: Create Project Structure",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.suggestFeatures",
+        "title": "AI: Suggest Features",
         "icon": "resources/sebguru-icon.svg"
       }
     ],

@@ -55,6 +55,9 @@ This flexibility allows you to use:
 - **AI: Create Directory** - Create a new directory
 - **AI: Create Project Structure** - Generate complete project structures with templates
 
+### Innovation
+- **AI: Suggest Features** - Get AI-powered feature and improvement suggestions
+
 ## Project Structure Creation
 
 The extension provides powerful tools for creating project structures:
@@ -85,6 +88,52 @@ When creating files, you can:
 - Have the AI generate content based on your description
 
 The AI will automatically adapt to the file type based on the extension, generating appropriate content for JavaScript, Python, HTML, CSS, and many other file types.
+
+## Feature Suggestion System
+
+The extension includes an intelligent feature suggestion system that helps you enhance your projects:
+
+### Context-Aware Suggestions
+
+Get tailored feature suggestions based on different contexts:
+
+1. **Project Analysis**: The AI analyzes your project structure and files to suggest relevant features and improvements
+   - Examines file organization
+   - Reviews package.json and other configuration files
+   - Identifies patterns and potential enhancement opportunities
+
+2. **Code-Based Suggestions**: Select specific code and get targeted feature ideas
+   - Suggests improvements for the selected functionality
+   - Recommends extensions and enhancements
+   - Identifies potential optimizations
+
+3. **General Project Ideas**: Get suggestions based on your project type
+   - Web applications
+   - Mobile apps
+   - Desktop applications
+   - API/Backend services
+   - Data science projects
+   - DevOps/Infrastructure
+
+### Comprehensive Recommendations
+
+Each feature suggestion includes:
+
+- **Clear Title**: Concise name for the feature
+- **Description**: Detailed explanation of what the feature does
+- **Value Proposition**: Why this feature would benefit your project
+- **Implementation Approach**: How to implement the feature
+- **Technology Recommendations**: Suggested libraries or tools
+
+### How to Use
+
+1. Run the "AI: Suggest Features" command from the command palette
+2. Choose the context type:
+   - Current Project: Analyzes your workspace
+   - Selected Code: Uses your current selection
+   - General Ideas: Based on project type
+3. Follow the prompts to provide additional context
+4. Review the generated suggestions in a new markdown document
 
 ## Privacy & Security
 

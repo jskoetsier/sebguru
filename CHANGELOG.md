@@ -2,6 +2,24 @@
 
 All notable changes to the "SebGuru Assistant" extension will be documented in this file.
 
+## [0.5.0] - 2023-08-25
+
+### Added
+- Feature suggestion system:
+  - Analyze current project for feature ideas
+  - Generate suggestions based on selected code
+  - Get general feature ideas for different project types
+- Context-aware recommendations:
+  - Project structure analysis
+  - Code analysis
+  - Project type specific suggestions
+- Detailed feature proposals with:
+  - Clear titles
+  - Feature descriptions
+  - Value propositions
+  - Implementation approaches
+  - Technology recommendations
+
 ## [0.4.0] - 2023-08-20
 
 ### Added
