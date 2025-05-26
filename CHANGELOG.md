@@ -6,9 +6,15 @@ All notable changes to the "SebGuru Assistant" extension will be documented in t
 
 ### Fixed
 - Updated default local LLM URL from "http://localhost:8080" to "http://127.0.0.1:11434" to fix chat functionality with local LLM servers
-- Updated default local LLM API path from "/v1/chat/completions" to "/api/chat" for compatibility with Ollama API
-- Modified request payload format for Ollama API compatibility (using "options.num_predict" instead of "max_tokens")
-- Replaced axios dependency with built-in Node.js http/https modules to eliminate external dependencies
+- Updated default local LLM API path from "/v1/chat/completions" to "/api/generate" for compatibility with Ollama API
+- Modified request payload format for Ollama API compatibility
+- Fixed URL construction to prevent double slashes in API endpoints
+
+### Added
+- New "Open Chat Panel" command to open chat in a separate panel instead of sidebar
+- Keyboard shortcut (Ctrl+Shift+C / Cmd+Shift+C) to quickly open the chat panel
+- Test webview command for troubleshooting webview functionality
+- Simplified chat interface with improved debugging capabilities
 
 ### Changed
 - Improved error handling for HTTP requests

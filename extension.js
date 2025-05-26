@@ -82,24 +82,56 @@ class LLMClient {
    */
   async makeLocalRequest(prompt, options = {}) {
     try {
-      const url = `${this.localLLMUrl}${this.localLLMPath}`;
+      // Ensure we don't have double slashes in the URL
+      const baseUrl = this.localLLMUrl.endsWith('/') ? this.localLLMUrl.slice(0, -1) : this.localLLMUrl;
+      const path = this.localLLMPath.startsWith('/') ? this.localLLMPath : '/' + this.localLLMPath;
+      const url = `${baseUrl}${path}`;
       console.log(`Making request to local LLM at: ${url}`);
 
       // Prepare request payload based on API endpoint
       let payload;
-      if (this.localLLMPath === '/api/chat') {
-        // Ollama API format
+      if (this.localLLMPath === '/api/generate') {
+        // Ollama /api/generate endpoint format
+        payload = {
+          model: this.model,
+          prompt: prompt,
+          system: options.systemPrompt || 'You are a helpful AI coding assistant.',
+          stream: false
+        };
+
+        // Only add options if they're specified
+        if (options.temperature || options.maxTokens) {
+          if (options.maxTokens || this.maxTokens) {
+            payload.num_predict = options.maxTokens || this.maxTokens;
+          }
+
+          if (options.temperature) {
+            payload.temperature = options.temperature;
+          }
+        }
+      } else if (this.localLLMPath === '/api/chat') {
+        // Ollama /api/chat endpoint format
         payload = {
           model: this.model,
           messages: [
             { role: 'system', content: options.systemPrompt || 'You are a helpful AI coding assistant.' },
             { role: 'user', content: prompt }
           ],
-          options: {
-            num_predict: options.maxTokens || this.maxTokens,
-            temperature: options.temperature || 0.7,
-          }
+          stream: false
         };
+
+        // Only add options if they're specified
+        if (options.temperature || options.maxTokens) {
+          payload.options = {};
+
+          if (options.maxTokens || this.maxTokens) {
+            payload.options.num_predict = options.maxTokens || this.maxTokens;
+          }
+
+          if (options.temperature) {
+            payload.options.temperature = options.temperature;
+          }
+        }
       } else {
         // OpenAI-compatible API format
         payload = {
@@ -707,8 +739,243 @@ function activate(context) {
     vscode.window.registerWebviewViewProvider('aiWorkflows', workflowsViewProvider)
   );
 
-  // Add a test command to create a simple webview
+  // Add a command to open the chat in a panel instead of the sidebar
   context.subscriptions.push(
+    vscode.commands.registerCommand('sebguru-assistant.openChatPanel', async () => {
+      // Create a webview panel for the chat
+      const panel = vscode.window.createWebviewPanel(
+        'chatPanel',
+        'SebGuru Chat',
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true,
+          retainContextWhenHidden: true
+        }
+      );
+
+      // Initialize chat history
+      let chatHistory = [];
+
+      // Set the HTML content
+      function updatePanelContent() {
+        // Create chat history HTML
+        const chatHistoryHtml = chatHistory.map(message => {
+          const isUser = message.role === 'user';
+          return `
+            <div class="${isUser ? 'user-message' : 'assistant-message'}">
+              <div class="message-header">${isUser ? 'You' : 'AI Assistant'}</div>
+              <div class="message-content">${message.content}</div>
+            </div>
+          `;
+        }).join('');
+
+        panel.webview.html = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                font-family: var(--vscode-font-family);
+                font-size: var(--vscode-font-size);
+                color: var(--vscode-foreground);
+                background-color: var(--vscode-editor-background);
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+              }
+
+              #chat-container {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                overflow: hidden;
+              }
+
+              #messages-container {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+              }
+
+              #input-container {
+                padding: 16px;
+                border-top: 1px solid var(--vscode-panel-border);
+                background-color: var(--vscode-editor-background);
+              }
+
+              #chat-form {
+                display: flex;
+              }
+
+              #message-input {
+                flex: 1;
+                padding: 8px;
+                border: 1px solid var(--vscode-input-border);
+                background-color: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                border-radius: 4px;
+              }
+
+              #send-button {
+                margin-left: 8px;
+                background-color: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+              }
+
+              .user-message, .assistant-message {
+                margin-bottom: 16px;
+                padding: 12px;
+                border-radius: 8px;
+                max-width: 80%;
+              }
+
+              .user-message {
+                align-self: flex-end;
+                margin-left: auto;
+                background-color: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+              }
+
+              .assistant-message {
+                align-self: flex-start;
+                margin-right: auto;
+                background-color: var(--vscode-editor-inactiveSelectionBackground);
+              }
+
+              .message-header {
+                font-weight: bold;
+                margin-bottom: 4px;
+              }
+
+              .message-content {
+                white-space: pre-wrap;
+              }
+
+              #loading {
+                text-align: center;
+                padding: 16px;
+                display: none;
+              }
+
+              #loading.active {
+                display: block;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="chat-container">
+              <div id="messages-container">
+                ${chatHistoryHtml}
+                <div id="loading">AI Assistant is thinking...</div>
+              </div>
+              <div id="input-container">
+                <form id="chat-form">
+                  <input type="text" id="message-input" placeholder="Type your message here..." autocomplete="off">
+                  <button type="submit" id="send-button">Send</button>
+                </form>
+              </div>
+            </div>
+
+            <script>
+              const vscode = acquireVsCodeApi();
+              const messagesContainer = document.getElementById('messages-container');
+              const messageInput = document.getElementById('message-input');
+              const chatForm = document.getElementById('chat-form');
+              const loading = document.getElementById('loading');
+
+              // Scroll to bottom of messages
+              function scrollToBottom() {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              }
+
+              // Scroll to bottom on initial load
+              scrollToBottom();
+
+              // Focus the input field
+              messageInput.focus();
+
+              // Send message function
+              function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message) {
+                  vscode.postMessage({
+                    type: 'sendMessage',
+                    value: message
+                  });
+                  messageInput.value = '';
+                }
+              }
+
+              // Add event listeners
+              chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                sendMessage();
+              });
+
+              // Handle messages from extension
+              window.addEventListener('message', (event) => {
+                const message = event.data;
+
+                if (message.type === 'setLoading') {
+                  if (message.value) {
+                    loading.classList.add('active');
+                  } else {
+                    loading.classList.remove('active');
+                  }
+                  scrollToBottom();
+                } else if (message.type === 'updateChat') {
+                  // The extension will handle updating the entire HTML
+                  // Just scroll to bottom after update
+                  scrollToBottom();
+                }
+              });
+            </script>
+          </body>
+          </html>
+        `;
+      }
+
+      // Initial content update
+      updatePanelContent();
+
+      // Handle messages from the webview
+      panel.webview.onDidReceiveMessage(async (data) => {
+        if (data.type === 'sendMessage') {
+          try {
+            const userMessage = data.value;
+            chatHistory.push({ role: 'user', content: userMessage });
+            updatePanelContent();
+
+            // Show loading indicator
+            panel.webview.postMessage({ type: 'setLoading', value: true });
+
+            // Get response from LLM
+            const response = await client.makeRequest(userMessage, {
+              systemPrompt: 'You are SebGuru, an AI coding assistant. Help the user with their coding tasks and questions.',
+            });
+
+            chatHistory.push({ role: 'assistant', content: response });
+
+            // Hide loading indicator and update webview
+            panel.webview.postMessage({ type: 'setLoading', value: false });
+            updatePanelContent();
+            panel.webview.postMessage({ type: 'updateChat' });
+          } catch (error) {
+            vscode.window.showErrorMessage(`AI Assistant error: ${error.message}`);
+            panel.webview.postMessage({ type: 'setLoading', value: false });
+          }
+        }
+      });
+    }),
+
+    // Add a test command to create a simple webview
     vscode.commands.registerCommand('sebguru-assistant.testWebview', async () => {
       // Create a simple webview panel
       const panel = vscode.window.createWebviewPanel(

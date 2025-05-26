@@ -26,6 +26,14 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "keybindings": [
+      {
+        "command": "sebguru-assistant.openChatPanel",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c",
+        "when": "editorTextFocus"
+      }
+    ],
     "commands": [
       {
         "command": "sebguru-assistant.askAI",
@@ -91,6 +99,16 @@
         "command": "sebguru-assistant.executeCode",
         "title": "AI: Execute Code",
         "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.openChatPanel",
+        "title": "AI: Open Chat Panel",
+        "icon": "resources/sebguru-icon.svg"
+      },
+      {
+        "command": "sebguru-assistant.testWebview",
+        "title": "AI: Test Webview",
+        "icon": "resources/sebguru-icon.svg"
       }
     ],
     "configuration": {
@@ -108,7 +126,7 @@
         },
         "sebguru-assistant.localLLMPath": {
           "type": "string",
-          "default": "/api/chat",
+          "default": "/api/generate",
           "description": "API endpoint path for the locally running LLM server"
         },
         "sebguru-assistant.apiHostname": {
