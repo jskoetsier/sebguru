@@ -2,7 +2,7 @@
   "name": "sebguru-assistant",
   "displayName": "SebGuru Assistant",
   "description": "AI-assisted coding and agentic workflows powered by local LLMs or SebGuru",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "publisher": "SebGuru",
   "author": {
     "name": "SebGuru Team"
@@ -103,7 +103,7 @@
         },
         "sebguru-assistant.localLLMUrl": {
           "type": "string",
-          "default": "http://localhost:8080",
+          "default": "http://127.0.0.1:11434",
           "description": "URL of the locally running LLM server"
         },
         "sebguru-assistant.localLLMPath": {
