@@ -85,9 +85,24 @@ class LLMClient {
       const url = `${this.localLLMUrl}${this.localLLMPath}`;
       console.log(`Making request to local LLM at: ${url}`);
 
-      const response = await axios.post(
-        url,
-        {
+      // Prepare request payload based on API endpoint
+      let payload;
+      if (this.localLLMPath === '/api/chat') {
+        // Ollama API format
+        payload = {
+          model: this.model,
+          messages: [
+            { role: 'system', content: options.systemPrompt || 'You are a helpful AI coding assistant.' },
+            { role: 'user', content: prompt }
+          ],
+          options: {
+            num_predict: options.maxTokens || this.maxTokens,
+            temperature: options.temperature || 0.7,
+          }
+        };
+      } else {
+        // OpenAI-compatible API format
+        payload = {
           model: this.model,
           messages: [
             { role: 'system', content: options.systemPrompt || 'You are a helpful AI coding assistant.' },
@@ -95,7 +110,14 @@ class LLMClient {
           ],
           max_tokens: options.maxTokens || this.maxTokens,
           temperature: options.temperature || 0.7,
-        },
+        };
+      }
+
+      console.log(`Request payload: ${JSON.stringify(payload)}`);
+
+      const response = await axios.post(
+        url,
+        payload,
         {
           headers: {
             'Content-Type': 'application/json'
