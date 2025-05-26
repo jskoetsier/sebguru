@@ -4,6 +4,9 @@ All notable changes to the "SebGuru Assistant" extension will be documented in t
 
 ## [0.6.2] - 2023-09-05
 
+### Added
+- Added support for the "deepseek-r1" model
+
 ### Fixed
 - Enhanced response format handling for Ollama API
 - Added detailed logging of API responses for better debugging

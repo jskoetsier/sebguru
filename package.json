@@ -146,9 +146,11 @@
         },
         "sebguru-assistant.model": {
           "type": "string",
-          "default": "deepseek-coder",
+          "default": "deepseek_r1-claude3.7",
           "enum": [
+            "deepseek_r1-claude3.7",
             "deepseek-coder",
+            "deepseek-r1",
             "local-model",
             "sebguru-latest",
             "sebguru-fast",
