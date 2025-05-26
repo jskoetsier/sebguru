@@ -415,10 +415,14 @@ class AIChatViewProvider {
     console.log('AIChatViewProvider._getHtmlForWebview called');
     console.log('Chat history length:', this.chatHistory.length);
 
-    // Create a simplified chat history HTML
+    // Create a chat history HTML with markdown formatting
     const chatHistoryHtml = this.chatHistory.map(message => {
       const isUser = message.role === 'user';
-      return `<div><strong>${isUser ? 'You' : 'AI Assistant'}</strong>: ${message.content}</div>`;
+      const formattedContent = this._formatMessageContent(message.content);
+      return `<div class="message ${isUser ? 'user-message' : 'assistant-message'}">
+        <div class="message-header"><strong>${isUser ? 'You' : 'AI Assistant'}</strong></div>
+        <div class="message-content">${formattedContent}</div>
+      </div>`;
     }).join('');
 
     // Return a very simple HTML structure
@@ -445,7 +449,7 @@ class AIChatViewProvider {
           input {
             flex-grow: 1;
             padding: 5px;
-            border: 2px solid red;
+            border: 1px solid var(--vscode-input-border);
             background-color: var(--vscode-input-background);
             color: var(--vscode-input-foreground);
           }
@@ -472,6 +476,75 @@ class AIChatViewProvider {
             padding: 2px;
             font-size: 10px;
             z-index: 1000;
+          }
+
+          /* Message styling */
+          .message {
+            margin-bottom: 15px;
+            padding: 8px;
+            border-radius: 5px;
+          }
+
+          .user-message {
+            background-color: var(--vscode-editor-inactiveSelectionBackground);
+          }
+
+          .assistant-message {
+            background-color: var(--vscode-editor-selectionHighlightBackground);
+          }
+
+          .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+          }
+
+          .message-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+
+          /* Code block styling */
+          .code-block {
+            margin: 12px 0;
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 6px;
+            overflow: hidden;
+            background-color: var(--vscode-editor-background);
+          }
+
+          .code-header {
+            background-color: var(--vscode-panel-border);
+            color: var(--vscode-foreground);
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            font-family: var(--vscode-font-family);
+            text-transform: uppercase;
+          }
+
+          pre {
+            background-color: var(--vscode-editor-background);
+            padding: 12px;
+            overflow-x: auto;
+            margin: 0;
+            max-height: 400px;
+          }
+
+          code {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            background-color: var(--vscode-editor-lineHighlightBackground);
+            padding: 2px 4px;
+            border-radius: 3px;
+          }
+
+          pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            display: block;
+            white-space: pre;
+            line-height: 1.5;
           }
         </style>
       </head>
@@ -555,15 +628,41 @@ class AIChatViewProvider {
   }
 
   _formatMessageContent(content) {
-    // Convert markdown code blocks to HTML
-    const formattedContent = content.replace(/```([\w]*)\n([\s\S]*?)```/g, (_, language, code) => {
-      return `<pre><code class="language-${language}">${this._escapeHtml(code)}</code></pre>`;
+    if (!content) return '';
+
+    // First handle code blocks to prevent interference with other formatting
+    let formattedContent = content.replace(/```([\w]*)\n([\s\S]*?)```/g, (_, language, code) => {
+      // Clean up the language identifier
+      language = language.trim();
+      // Create a properly formatted code block
+      return `<div class="code-block"><div class="code-header">${language || 'code'}</div><pre><code class="language-${language || 'text'}">${this._escapeHtml(code)}</code></pre></div>`;
     });
 
-    // Convert inline code to HTML
-    return formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>')
-      // Convert line breaks to <br>
-      .replace(/\n/g, '<br>');
+    // Handle inline code (but not inside already processed code blocks)
+    formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Handle basic markdown formatting
+    formattedContent = formattedContent
+      // Bold
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      // Headers (h3 and h4 only, to avoid conflicts with message headers)
+      .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+      .replace(/^#### (.*?)$/gm, '<h4>$1</h4>')
+      // Bullet lists
+      .replace(/^- (.*?)$/gm, '<li>$1</li>')
+      // Numbered lists
+      .replace(/^\d+\. (.*?)$/gm, '<li>$1</li>')
+      // Convert line breaks to <br> (but preserve pre blocks)
+      .replace(/\n(?!<\/pre>)/g, '<br>');
+
+    // Wrap lists in ul/ol tags
+    formattedContent = formattedContent
+      .replace(/(<li>.*?<\/li>)\s*<br>/g, '$1')
+      .replace(/(<li>.*?<\/li>)+/g, '<ul>$&</ul>');
+
+    return formattedContent;
   }
 
   _escapeHtml(unsafe) {
@@ -870,16 +969,67 @@ function activate(context) {
 
       // Set the HTML content
       function updatePanelContent() {
-        // Create chat history HTML
+        // Create chat history HTML with markdown formatting
         const chatHistoryHtml = chatHistory.map(message => {
           const isUser = message.role === 'user';
+          // Format the message content with markdown
+          const formattedContent = formatMessageContent(message.content);
           return `
             <div class="${isUser ? 'user-message' : 'assistant-message'}">
               <div class="message-header">${isUser ? 'You' : 'AI Assistant'}</div>
-              <div class="message-content">${message.content}</div>
+              <div class="message-content">${formattedContent}</div>
             </div>
           `;
         }).join('');
+
+        // Helper function to format message content with markdown
+        function formatMessageContent(content) {
+          if (!content) return '';
+
+          // First handle code blocks to prevent interference with other formatting
+          let formattedContent = content.replace(/```([\w]*)\n([\s\S]*?)```/g, (_, language, code) => {
+            // Clean up the language identifier
+            language = language.trim();
+            // Create a properly formatted code block
+            return `<div class="code-block"><div class="code-header">${language || 'code'}</div><pre><code class="language-${language || 'text'}">${escapeHtml(code)}</code></pre></div>`;
+          });
+
+          // Handle inline code (but not inside already processed code blocks)
+          formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+          // Handle basic markdown formatting
+          formattedContent = formattedContent
+            // Bold
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            // Italic
+            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+            // Headers (h3 and h4 only, to avoid conflicts with message headers)
+            .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+            .replace(/^#### (.*?)$/gm, '<h4>$1</h4>')
+            // Bullet lists
+            .replace(/^- (.*?)$/gm, '<li>$1</li>')
+            // Numbered lists
+            .replace(/^\d+\. (.*?)$/gm, '<li>$1</li>')
+            // Convert line breaks to <br> (but preserve pre blocks)
+            .replace(/\n(?!<\/pre>)/g, '<br>');
+
+          // Wrap lists in ul/ol tags
+          formattedContent = formattedContent
+            .replace(/(<li>.*?<\/li>)\s*<br>/g, '$1')
+            .replace(/(<li>.*?<\/li>)+/g, '<ul>$&</ul>');
+
+          return formattedContent;
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(unsafe) {
+          return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
 
         panel.webview.html = `
           <!DOCTYPE html>
