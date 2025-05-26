@@ -271,210 +271,106 @@ class AIChatViewProvider {
     console.log('AIChatViewProvider._getHtmlForWebview called');
     console.log('Chat history length:', this.chatHistory.length);
 
+    // Create a simplified chat history HTML
     const chatHistoryHtml = this.chatHistory.map(message => {
       const isUser = message.role === 'user';
-      const messageClass = isUser ? 'user-message' : 'assistant-message';
-      const messageContent = this._formatMessageContent(message.content);
-
-      return `
-        <div class="${messageClass}-container">
-          <div class="${messageClass}">
-            <div class="message-header">
-              <strong>${isUser ? 'You' : 'AI Assistant'}</strong>
-            </div>
-            <div class="message-content">
-              ${messageContent}
-            </div>
-          </div>
-        </div>
-      `;
+      return `<div><strong>${isUser ? 'You' : 'AI Assistant'}</strong>: ${message.content}</div>`;
     }).join('');
 
+    // Return a very simple HTML structure
     return `
       <!DOCTYPE html>
-      <html lang="en">
+      <html>
       <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Assistant Chat</title>
         <style>
           body {
+            margin: 0;
+            padding: 10px;
             font-family: var(--vscode-font-family);
             font-size: var(--vscode-font-size);
             color: var(--vscode-foreground);
-            padding: 0;
-            margin: 0;
+            background-color: var(--vscode-editor-background);
           }
-          .chat-container {
+
+          form {
             display: flex;
-            flex-direction: column;
-            height: 100vh;
-            max-width: 100%;
-            overflow-x: hidden;
-          }
-          .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-          }
-          .user-message-container, .assistant-message-container {
             margin-bottom: 10px;
-            display: flex;
-            flex-direction: column;
           }
-          .user-message {
-            align-self: flex-end;
-            background-color: var(--vscode-button-background);
-            color: var(--vscode-button-foreground);
-            border-radius: 10px 10px 0 10px;
-            padding: 8px 12px;
-            max-width: 80%;
-            word-wrap: break-word;
-          }
-          .assistant-message {
-            align-self: flex-start;
-            background-color: var(--vscode-editor-inactiveSelectionBackground);
-            border-radius: 10px 10px 10px 0;
-            padding: 8px 12px;
-            max-width: 80%;
-            word-wrap: break-word;
-          }
-          .message-header {
-            margin-bottom: 5px;
-            font-weight: bold;
-          }
-          .input-container {
-            display: flex;
-            padding: 10px;
-            border-top: 1px solid var(--vscode-panel-border);
-          }
-          #message-input {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid var(--vscode-input-border);
+
+          input {
+            flex-grow: 1;
+            padding: 5px;
+            border: 2px solid red;
             background-color: var(--vscode-input-background);
             color: var(--vscode-input-foreground);
-            border-radius: 4px;
-            margin-right: 8px;
-            resize: none;
-            min-height: 60px;
           }
-          #send-button {
+
+          button {
+            margin-left: 5px;
             background-color: var(--vscode-button-background);
             color: var(--vscode-button-foreground);
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-          }
-          #send-button:hover {
-            background-color: var(--vscode-button-hoverBackground);
-          }
-          .toolbar {
-            display: flex;
-            justify-content: flex-end;
             padding: 5px 10px;
-            border-bottom: 1px solid var(--vscode-panel-border);
           }
-          .toolbar button {
-            background: none;
-            border: none;
-            color: var(--vscode-button-foreground);
-            cursor: pointer;
-            padding: 4px 8px;
-            font-size: 12px;
+
+          #chat-history {
+            margin-top: 10px;
+            border-top: 1px solid var(--vscode-panel-border);
+            padding-top: 10px;
           }
-          .toolbar button:hover {
-            text-decoration: underline;
-          }
-          pre {
-            background-color: var(--vscode-editor-background);
-            padding: 8px;
-            border-radius: 4px;
-            overflow-x: auto;
-          }
-          code {
-            font-family: var(--vscode-editor-font-family);
-            font-size: var(--vscode-editor-font-size);
-          }
-          .loading {
-            display: none;
-            text-align: center;
-            padding: 10px;
-          }
-          .loading.active {
-            display: block;
+
+          #debug {
+            position: fixed;
+            top: 0;
+            right: 0;
+            background: rgba(255,0,0,0.1);
+            padding: 2px;
+            font-size: 10px;
+            z-index: 1000;
           }
         </style>
       </head>
       <body>
-        <div class="chat-container">
-          <div class="toolbar">
-            <button id="clear-button">Clear Chat</button>
-          </div>
-          <div class="messages-container">
-            ${chatHistoryHtml}
-            <div id="loading" class="loading">
-              <p>AI Assistant is thinking...</p>
-            </div>
-          </div>
-          <div class="input-container">
-            <textarea id="message-input" placeholder="Ask AI Assistant something..."></textarea>
-            <button id="send-button">Send</button>
-          </div>
-        </div>
+        <div id="debug">Debug info</div>
+
+        <form id="chat-form">
+          <input type="text" id="message-input" placeholder="Type your message here..." autocomplete="off">
+          <button type="submit" id="send-button">Send</button>
+        </form>
+
+        <div id="chat-history">${chatHistoryHtml}</div>
 
         <script>
-          console.log('Webview script starting');
+          // Debug element
+          const debugInfo = document.getElementById('debug');
+          function debug(msg) {
+            console.log(msg);
+            if (debugInfo) {
+              debugInfo.textContent = 'Debug: ' + msg;
+            }
+          }
+
+          debug('Script started');
+
           try {
             const vscode = acquireVsCodeApi();
-            console.log('VS Code API acquired');
+            debug('VS Code API acquired');
 
             const messageInput = document.getElementById('message-input');
-            console.log('Message input element:', messageInput);
-
             const sendButton = document.getElementById('send-button');
-            console.log('Send button element:', sendButton);
 
-            const clearButton = document.getElementById('clear-button');
-            console.log('Clear button element:', clearButton);
+            debug('Elements found: ' + (messageInput ? 'input✓' : 'input✗') + ' ' +
+                  (sendButton ? 'button✓' : 'button✗'));
 
-            const loading = document.getElementById('loading');
-            console.log('Loading element:', loading);
+            // Focus the input field
+            messageInput.focus();
 
-            const messagesContainer = document.querySelector('.messages-container');
-            console.log('Messages container element:', messagesContainer);
-
-            // Scroll to bottom of messages
-            function scrollToBottom() {
-              messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-
-            // Scroll to bottom on initial load
-            scrollToBottom();
-
-            // Send message when send button is clicked
-            sendButton.addEventListener('click', () => {
-              sendMessage();
-            });
-
-            // Send message when Enter key is pressed (without Shift)
-            messageInput.addEventListener('keydown', (e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-              }
-            });
-
-            // Clear chat when clear button is clicked
-            clearButton.addEventListener('click', () => {
-              vscode.postMessage({ type: 'clearChat' });
-            });
-
-            // Send message to extension
+            // Send message function
             function sendMessage() {
               const message = messageInput.value.trim();
               if (message) {
+                debug('Sending message: ' + message);
                 vscode.postMessage({
                   type: 'sendMessage',
                   value: message
@@ -483,23 +379,30 @@ class AIChatViewProvider {
               }
             }
 
-            // Handle messages from extension
-            window.addEventListener('message', (event) => {
-              const message = event.data;
+            // Add event listeners
+            const chatForm = document.getElementById('chat-form');
+            chatForm.addEventListener('submit', (e) => {
+              debug('Form submitted');
+              e.preventDefault();
+              sendMessage();
+            });
 
-              if (message.type === 'setLoading') {
-                if (message.value) {
-                  loading.classList.add('active');
-                } else {
-                  loading.classList.remove('active');
-                }
-                scrollToBottom();
+            sendButton.addEventListener('click', () => {
+              debug('Send button clicked');
+              sendMessage();
+            });
+
+            messageInput.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                debug('Enter key pressed');
+                e.preventDefault();
+                sendMessage();
               }
             });
 
-            console.log('Event listeners set up successfully');
+            debug('Event listeners set up');
           } catch (error) {
-            console.error('Error initializing webview:', error);
+            debug('Error: ' + error.message);
           }
         </script>
       </body>
@@ -810,31 +713,67 @@ function activate(context) {
       // Create a simple webview panel
       const panel = vscode.window.createWebviewPanel(
         'testWebview',
-        'Test Webview',
+        'Test Input Field',
         vscode.ViewColumn.One,
         {
           enableScripts: true
         }
       );
 
-      // Set the HTML content
+      // Set the HTML content with a very simple input field
       panel.webview.html = `
         <!DOCTYPE html>
-        <html lang="en">
+        <html>
         <head>
           <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Test Webview</title>
+          <style>
+            body { padding: 20px; font-family: Arial, sans-serif; }
+            input { width: 80%; padding: 10px; margin-right: 10px; border: 2px solid blue; }
+            button { padding: 10px; background: blue; color: white; border: none; }
+            #result { margin-top: 20px; padding: 10px; background: #f0f0f0; }
+          </style>
         </head>
         <body>
-          <h1>Test Webview</h1>
-          <p>If you can see this, webviews are working correctly.</p>
-          <button id="test-button">Click Me</button>
+          <h2>Test Input Field</h2>
+          <p>Type something and click Send to test if input works:</p>
+
+          <div style="display: flex; margin-bottom: 20px;">
+            <input type="text" id="test-input" placeholder="Type here...">
+            <button id="test-button">Send</button>
+          </div>
+
+          <div id="result">Messages will appear here</div>
 
           <script>
             const vscode = acquireVsCodeApi();
-            document.getElementById('test-button').addEventListener('click', () => {
-              vscode.postMessage({ type: 'buttonClicked' });
+            const input = document.getElementById('test-input');
+            const button = document.getElementById('test-button');
+            const result = document.getElementById('result');
+
+            // Log elements to help debug
+            console.log('Input element:', input);
+            console.log('Button element:', button);
+
+            // Focus the input field
+            input.focus();
+
+            button.addEventListener('click', () => {
+              const message = input.value.trim();
+              if (message) {
+                result.textContent = 'You typed: ' + message;
+                vscode.postMessage({
+                  type: 'inputMessage',
+                  value: message
+                });
+                input.value = '';
+              }
+            });
+
+            input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                button.click();
+              }
             });
           </script>
         </body>
@@ -843,12 +782,12 @@ function activate(context) {
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(message => {
-        if (message.type === 'buttonClicked') {
-          vscode.window.showInformationMessage('Button clicked in webview!');
+        if (message.type === 'inputMessage') {
+          vscode.window.showInformationMessage('You typed: ' + message.value);
         }
       });
 
-      vscode.window.showInformationMessage('Test webview created. Check if it appears.');
+      vscode.window.showInformationMessage('Test input field created. Please try typing in it.');
     }),
 
     // Register other commands
