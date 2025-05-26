@@ -2,6 +2,58 @@ const vscode = require('vscode');
 const axios = require('axios');
 
 /**
+ * Helper function to recursively extract text content from an object
+ * @param {object} obj - The object to extract text from
+ * @param {number} depth - Current recursion depth (to prevent infinite recursion)
+ * @returns {string|null} - Extracted text content or null if none found
+ */
+function extractTextContent(obj, depth = 0) {
+  // Prevent infinite recursion
+  if (depth > 5) return null;
+
+  // Handle null or undefined
+  if (obj == null) return null;
+
+  // If it's a string, return it directly
+  if (typeof obj === 'string') return obj;
+
+  // If it's an array, check each element
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const text = extractTextContent(item, depth + 1);
+      if (text) return text;
+    }
+    return null;
+  }
+
+  // If it's an object, look for common text fields
+  if (typeof obj === 'object') {
+    // Check common field names that might contain text
+    const textFields = ['content', 'text', 'message', 'response', 'output', 'result', 'answer', 'generated_text'];
+    for (const field of textFields) {
+      if (obj[field]) {
+        if (typeof obj[field] === 'string') {
+          return obj[field];
+        } else {
+          const text = extractTextContent(obj[field], depth + 1);
+          if (text) return text;
+        }
+      }
+    }
+
+    // If no common fields found, check all fields
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const text = extractTextContent(obj[key], depth + 1);
+        if (text) return text;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * LLM client for making requests to either a local LLM server or the SebGuru API
  */
 class LLMClient {
@@ -160,45 +212,66 @@ class LLMClient {
       // Log the response for debugging
       console.log('Response from local LLM:', JSON.stringify(response.data));
 
-      // Handle different response formats from various local LLM servers
-      if (response.data.choices && response.data.choices.length > 0) {
-        if (response.data.choices[0].message) {
-          return response.data.choices[0].message.content;
-        } else if (response.data.choices[0].text) {
-          return response.data.choices[0].text;
-        }
-      } else if (response.data.message) {
-        // Ollama API format
-        return response.data.message.content;
-      } else if (response.data.response) {
-        return response.data.response;
-      } else if (response.data.output) {
-        return response.data.output;
-      } else if (typeof response.data === 'string') {
-        return response.data;
-      }
-
-      // If we can't find a recognized format, try to extract content from the response
-      if (response.data && typeof response.data === 'object') {
-        // Try to find any field that might contain the response content
-        for (const key of ['content', 'text', 'result', 'answer', 'generated_text']) {
-          if (response.data[key] && typeof response.data[key] === 'string') {
-            return response.data[key];
+      try {
+        // Handle different response formats from various local LLM servers
+        if (response.data.choices && response.data.choices.length > 0) {
+          if (response.data.choices[0].message) {
+            return response.data.choices[0].message.content;
+          } else if (response.data.choices[0].text) {
+            return response.data.choices[0].text;
           }
+        } else if (response.data.message && response.data.message.content) {
+          // Ollama API format
+          return response.data.message.content;
+        } else if (response.data.response) {
+          return response.data.response;
+        } else if (response.data.output) {
+          return response.data.output;
+        } else if (typeof response.data === 'string') {
+          return response.data;
         }
 
-        // If there's a message object, try to extract content from it
-        if (response.data.message && typeof response.data.message === 'object') {
-          for (const key of ['content', 'text', 'value']) {
-            if (response.data.message[key] && typeof response.data.message[key] === 'string') {
-              return response.data.message[key];
+        // If we can't find a recognized format, try to extract content from the response
+        if (response.data && typeof response.data === 'object') {
+          // Try to find any field that might contain the response content
+          for (const key of ['content', 'text', 'result', 'answer', 'generated_text']) {
+            if (response.data[key] && typeof response.data[key] === 'string') {
+              return response.data[key];
+            }
+          }
+
+          // If there's a message object, try to extract content from it
+          if (response.data.message && typeof response.data.message === 'object') {
+            for (const key of ['content', 'text', 'value']) {
+              if (response.data.message[key] && typeof response.data.message[key] === 'string') {
+                return response.data.message[key];
+              }
+            }
+          }
+
+          // Last resort: stringify the entire response if it's an object
+          if (Object.keys(response.data).length > 0) {
+            // Check if there's any text content in the object
+            const jsonString = JSON.stringify(response.data);
+            if (jsonString.length > 2) { // More than just "{}"
+              // Extract any text content from the response
+              const textContent = extractTextContent(response.data);
+              if (textContent) {
+                return textContent;
+              }
+              // If no text content found, return the stringified object
+              return `AI response (raw format): ${jsonString}`;
             }
           }
         }
-      }
 
-      console.error('Unexpected response format from local LLM:', response.data);
-      throw new Error('Unexpected response format from local LLM');
+        console.error('Unexpected response format from local LLM:', response.data);
+        throw new Error('Unexpected response format from local LLM');
+      } catch (parseError) {
+        console.error('Error parsing LLM response:', parseError);
+        // Return a fallback response
+        return "I encountered an error processing the response. Please try again or check the server logs.";
+      }
     } catch (error) {
       console.error('Error making request to local LLM:', error);
       throw new Error(`Failed to get response from local LLM: ${error.message}. Make sure your local LLM server is running at ${this.localLLMUrl}`);
@@ -983,7 +1056,13 @@ function activate(context) {
 
             // Get response from LLM
             const response = await client.makeRequest(userMessage, {
-              systemPrompt: 'You are SebGuru, an AI coding assistant. Help the user with their coding tasks and questions.',
+              systemPrompt: `You are SebGuru, an AI coding assistant. Help the user with their coding tasks and questions.
+
+              When asked to modify code or create files, provide the complete code that should be written to the file.
+              Do not include explanations like "I don't have access to your system" - you are integrated into VS Code
+              and can provide code that the user can copy and paste into their files.
+
+              Always provide complete, working solutions that directly address the user's request.`,
             });
 
             chatHistory.push({ role: 'assistant', content: response });
