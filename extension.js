@@ -205,12 +205,26 @@ class LLMClient {
         {
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 30000 // 30 seconds timeout
         }
       );
 
       // Log the response for debugging
-      console.log('Response from local LLM:', JSON.stringify(response.data));
+      console.log('Response from local LLM:', JSON.stringify(response.data, null, 2));
+      console.log('Response status:', response.status);
+      console.log('Response headers:', JSON.stringify(response.headers, null, 2));
+
+      // Log specific fields to help diagnose the issue
+      if (response.data) {
+        console.log('Response data type:', typeof response.data);
+        console.log('Response data keys:', Object.keys(response.data));
+
+        if (response.data.message) {
+          console.log('Message field type:', typeof response.data.message);
+          console.log('Message field keys:', Object.keys(response.data.message));
+        }
+      }
 
       try {
         // Handle different response formats from various local LLM servers
@@ -1054,23 +1068,62 @@ function activate(context) {
             // Show loading indicator
             panel.webview.postMessage({ type: 'setLoading', value: true });
 
-            // Get response from LLM
-            const response = await client.makeRequest(userMessage, {
-              systemPrompt: `You are SebGuru, an AI coding assistant. Help the user with their coding tasks and questions.
+            try {
+              console.log('Processing user message:', userMessage);
 
-              When asked to modify code or create files, provide the complete code that should be written to the file.
-              Do not include explanations like "I don't have access to your system" - you are integrated into VS Code
-              and can provide code that the user can copy and paste into their files.
+              // Set a timeout for the request
+              const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Request timed out after 60 seconds')), 60000);
+              });
 
-              Always provide complete, working solutions that directly address the user's request.`,
-            });
+              // Get response from LLM with timeout
+              console.log('Making request to LLM...');
+              const response = await Promise.race([
+                client.makeRequest(userMessage, {
+                  systemPrompt: `You are SebGuru, an AI coding assistant. Help the user with their coding tasks and questions.
 
-            chatHistory.push({ role: 'assistant', content: response });
+                  When asked to create a Python script or any other code, provide ONLY the complete code without any explanations or markdown formatting.
+                  For example, if asked to create a Python script that prints "Hello World", respond with just:
 
-            // Hide loading indicator and update webview
-            panel.webview.postMessage({ type: 'setLoading', value: false });
-            updatePanelContent();
-            panel.webview.postMessage({ type: 'updateChat' });
+                  print("Hello World")
+
+                  Do not include explanations like "I don't have access to your system" - you are integrated into VS Code
+                  and can provide code that the user can copy and paste into their files.
+
+                  Always provide complete, working solutions that directly address the user's request.`,
+                }),
+                timeoutPromise
+              ]);
+
+              console.log('Received response from LLM:', response ? response.substring(0, 100) + '...' : 'null or empty');
+
+              // Handle empty or invalid responses
+              if (!response || typeof response !== 'string' || response.trim() === '') {
+                throw new Error('Received empty or invalid response from LLM');
+              }
+
+              // Add response to chat history
+              chatHistory.push({ role: 'assistant', content: response });
+              console.log('Added response to chat history');
+
+              // Hide loading indicator and update webview
+              panel.webview.postMessage({ type: 'setLoading', value: false });
+              console.log('Updating panel content');
+              updatePanelContent();
+              panel.webview.postMessage({ type: 'updateChat' });
+              console.log('Panel content updated');
+            } catch (error) {
+              console.error('Error getting response from LLM:', error);
+              vscode.window.showErrorMessage(`AI Assistant error: ${error.message}`);
+              panel.webview.postMessage({ type: 'setLoading', value: false });
+
+              // Add a message to the chat history indicating the error
+              chatHistory.push({
+                role: 'assistant',
+                content: `I'm sorry, I encountered an error: ${error.message}. Please try again or check the server logs.`
+              });
+              updatePanelContent();
+            }
           } catch (error) {
             vscode.window.showErrorMessage(`AI Assistant error: ${error.message}`);
             panel.webview.postMessage({ type: 'setLoading', value: false });
