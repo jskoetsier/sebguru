@@ -126,7 +126,7 @@
         },
         "sebguru-assistant.localLLMPath": {
           "type": "string",
-          "default": "/api/chat/completions",
+          "default": "/api/chat",
           "description": "API endpoint path for the locally running LLM server"
         },
         "sebguru-assistant.apiHostname": {
@@ -146,8 +146,9 @@
         },
         "sebguru-assistant.model": {
           "type": "string",
-          "default": "local-model",
+          "default": "deepseek-coder",
           "enum": [
+            "deepseek-coder",
             "local-model",
             "sebguru-latest",
             "sebguru-fast",
