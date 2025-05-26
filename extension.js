@@ -367,32 +367,76 @@ class AIChatViewProvider {
     console.log('Webview HTML content updated');
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
+      console.log('AIChatViewProvider received message:', data);
+
       if (data.type === 'sendMessage') {
         try {
           const userMessage = data.value;
+          console.log('User message received:', userMessage);
+
+          // Add user message to chat history
           this.chatHistory.push({ role: 'user', content: userMessage });
           this._updateWebview();
+          console.log('Chat history updated with user message');
 
           // Show loading indicator
           webviewView.webview.postMessage({ type: 'setLoading', value: true });
+          console.log('Loading indicator shown');
 
-          // Get response from SebGuru
-          const response = await this.client.makeRequest(userMessage, {
-            systemPrompt: 'You are SebGuru, an AI coding assistant. Help the user with their coding tasks and questions.',
+          // Set a timeout for the request
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Request timed out after 60 seconds')), 60000);
           });
 
+          console.log('Making request to LLM...');
+          // Get response from LLM with timeout
+          const response = await Promise.race([
+            this.client.makeRequest(userMessage, {
+              systemPrompt: `You are SebGuru, an AI coding assistant. Help the user with their coding tasks and questions.
+
+              When asked to create a Python script or any other code, provide ONLY the complete code without any explanations or markdown formatting.
+              For example, if asked to create a Python script that prints "Hello World", respond with just:
+
+              print("Hello World")
+
+              Do not include explanations like "I don't have access to your system" - you are integrated into VS Code
+              and can provide code that the user can copy and paste into their files.
+
+              Always provide complete, working solutions that directly address the user's request.`,
+            }),
+            timeoutPromise
+          ]);
+
+          console.log('Received response from LLM:', response ? response.substring(0, 100) + '...' : 'null or empty');
+
+          // Add response to chat history
           this.chatHistory.push({ role: 'assistant', content: response });
+          console.log('Chat history updated with assistant response');
 
           // Hide loading indicator and update webview
           webviewView.webview.postMessage({ type: 'setLoading', value: false });
+          console.log('Loading indicator hidden');
+
           this._updateWebview();
+          console.log('Webview updated with new chat history');
+
         } catch (error) {
+          console.error('Error getting response from LLM:', error);
           vscode.window.showErrorMessage(`AI Assistant error: ${error.message}`);
           webviewView.webview.postMessage({ type: 'setLoading', value: false });
+
+          // Add error message to chat history
+          this.chatHistory.push({
+            role: 'assistant',
+            content: `I'm sorry, I encountered an error: ${error.message}. Please try again or check the server logs.`
+          });
+          this._updateWebview();
         }
       } else if (data.type === 'clearChat') {
+        console.log('Clearing chat history');
         this.chatHistory = [];
         this._updateWebview();
+        console.log('Chat history cleared');
       }
     });
   }
@@ -419,88 +463,115 @@ class AIChatViewProvider {
     const chatHistoryHtml = this.chatHistory.map(message => {
       const isUser = message.role === 'user';
       const formattedContent = this._formatMessageContent(message.content);
-      return `<div class="message ${isUser ? 'user-message' : 'assistant-message'}">
-        <div class="message-header"><strong>${isUser ? 'You' : 'AI Assistant'}</strong></div>
+      return `<div class="${isUser ? 'user-message' : 'assistant-message'}">
+        <div class="message-header">${isUser ? 'You' : 'AI Assistant'}</div>
         <div class="message-content">${formattedContent}</div>
       </div>`;
     }).join('');
 
-    // Return a very simple HTML structure
+    // Return a more robust HTML structure similar to the chat panel
     return `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <style>
-          body {
+          html, body {
             margin: 0;
-            padding: 10px;
+            padding: 0;
+            height: 100%;
             font-family: var(--vscode-font-family);
             font-size: var(--vscode-font-size);
             color: var(--vscode-foreground);
             background-color: var(--vscode-editor-background);
           }
 
-          form {
+          #chat-container {
             display: flex;
-            margin-bottom: 10px;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
           }
 
-          input {
-            flex-grow: 1;
-            padding: 5px;
+          #messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+          }
+
+          #input-container {
+            padding: 10px;
+            border-top: 1px solid var(--vscode-panel-border);
+            background-color: var(--vscode-editor-background);
+          }
+
+          #chat-form {
+            display: flex;
+          }
+
+          #message-input {
+            flex: 1;
+            padding: 8px;
             border: 1px solid var(--vscode-input-border);
             background-color: var(--vscode-input-background);
             color: var(--vscode-input-foreground);
+            border-radius: 4px;
+            min-height: 20px;
           }
 
-          button {
-            margin-left: 5px;
+          #send-button {
+            margin-left: 8px;
             background-color: var(--vscode-button-background);
             color: var(--vscode-button-foreground);
             border: none;
-            padding: 5px 10px;
+            padding: 0 10px;
+            border-radius: 4px;
+            cursor: pointer;
           }
 
-          #chat-history {
-            margin-top: 10px;
-            border-top: 1px solid var(--vscode-panel-border);
-            padding-top: 10px;
+          #messages-container {
+            display: flex;
+            flex-direction: column;
           }
 
-          #debug {
-            position: fixed;
-            top: 0;
-            right: 0;
-            background: rgba(255,0,0,0.1);
-            padding: 2px;
-            font-size: 10px;
-            z-index: 1000;
-          }
-
-          /* Message styling */
-          .message {
-            margin-bottom: 15px;
-            padding: 8px;
-            border-radius: 5px;
+          .user-message, .assistant-message {
+            margin-bottom: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 85%;
+            display: block;
           }
 
           .user-message {
-            background-color: var(--vscode-editor-inactiveSelectionBackground);
+            align-self: flex-end;
+            margin-left: auto;
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
           }
 
           .assistant-message {
-            background-color: var(--vscode-editor-selectionHighlightBackground);
+            align-self: flex-start;
+            margin-right: auto;
+            background-color: var(--vscode-editor-inactiveSelectionBackground);
           }
 
           .message-header {
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
           }
 
           .message-content {
             white-space: pre-wrap;
-            word-break: break-word;
+          }
+
+          #loading {
+            text-align: center;
+            padding: 16px;
+            display: none;
+          }
+
+          #loading.active {
+            display: block;
           }
 
           /* Code block styling */
@@ -546,17 +617,35 @@ class AIChatViewProvider {
             white-space: pre;
             line-height: 1.5;
           }
+
+          #debug {
+            position: fixed;
+            top: 0;
+            right: 0;
+            background: rgba(255,0,0,0.1);
+            padding: 2px;
+            font-size: 10px;
+            z-index: 1000;
+            display: none; /* Hide in production */
+          }
         </style>
       </head>
       <body>
         <div id="debug">Debug info</div>
 
-        <form id="chat-form">
-          <input type="text" id="message-input" placeholder="Type your message here..." autocomplete="off">
-          <button type="submit" id="send-button">Send</button>
-        </form>
+        <div id="chat-container">
+          <div id="messages-container">
+            ${chatHistoryHtml}
+            <div id="loading">AI Assistant is thinking...</div>
+          </div>
 
-        <div id="chat-history">${chatHistoryHtml}</div>
+          <div id="input-container">
+            <form id="chat-form">
+              <input type="text" id="message-input" placeholder="Type your message here..." autocomplete="off">
+              <button type="submit" id="send-button">Send</button>
+            </form>
+          </div>
+        </div>
 
         <script>
           // Debug element
@@ -574,11 +663,25 @@ class AIChatViewProvider {
             const vscode = acquireVsCodeApi();
             debug('VS Code API acquired');
 
+            const messagesContainer = document.getElementById('messages-container');
             const messageInput = document.getElementById('message-input');
+            const chatForm = document.getElementById('chat-form');
             const sendButton = document.getElementById('send-button');
+            const loading = document.getElementById('loading');
 
-            debug('Elements found: ' + (messageInput ? 'input✓' : 'input✗') + ' ' +
+            debug('Elements found: ' +
+                  (messagesContainer ? 'container✓ ' : 'container✗ ') +
+                  (messageInput ? 'input✓ ' : 'input✗ ') +
+                  (chatForm ? 'form✓ ' : 'form✗ ') +
                   (sendButton ? 'button✓' : 'button✗'));
+
+            // Scroll to bottom of messages
+            function scrollToBottom() {
+              messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            // Scroll to bottom on initial load
+            scrollToBottom();
 
             // Focus the input field
             messageInput.focus();
@@ -597,7 +700,6 @@ class AIChatViewProvider {
             }
 
             // Add event listeners
-            const chatForm = document.getElementById('chat-form');
             chatForm.addEventListener('submit', (e) => {
               debug('Form submitted');
               e.preventDefault();
@@ -614,6 +716,20 @@ class AIChatViewProvider {
                 debug('Enter key pressed');
                 e.preventDefault();
                 sendMessage();
+              }
+            });
+
+            // Handle messages from extension
+            window.addEventListener('message', (event) => {
+              const message = event.data;
+
+              if (message.type === 'setLoading') {
+                if (message.value) {
+                  loading.classList.add('active');
+                } else {
+                  loading.classList.remove('active');
+                }
+                scrollToBottom();
               }
             });
 
@@ -949,6 +1065,29 @@ function activate(context) {
     vscode.window.registerWebviewViewProvider('aiChat', chatViewProvider),
     vscode.window.registerWebviewViewProvider('aiWorkflows', workflowsViewProvider)
   );
+
+  // Create a status bar item for quick access to the chat panel
+  const chatStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  chatStatusBarItem.text = "$(comment) AI Chat";
+  chatStatusBarItem.tooltip = "Open AI Chat Panel";
+  chatStatusBarItem.command = 'sebguru-assistant.openChatPanel';
+  chatStatusBarItem.show();
+
+  // Add the status bar item to subscriptions
+  context.subscriptions.push(chatStatusBarItem);
+
+  // Show a welcome message with instructions on first activation
+  const showWelcomeMessage = () => {
+    const message = "SebGuru Assistant is active! Click the AI Chat button in the status bar or use Cmd+Shift+C to open the chat panel.";
+    vscode.window.showInformationMessage(message, "Open Chat Panel").then(selection => {
+      if (selection === "Open Chat Panel") {
+        vscode.commands.executeCommand('sebguru-assistant.openChatPanel');
+      }
+    });
+  };
+
+  // Show welcome message after a short delay
+  setTimeout(showWelcomeMessage, 1500);
 
   // Add a command to open the chat in a panel instead of the sidebar
   context.subscriptions.push(

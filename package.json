@@ -206,6 +206,17 @@
           "command": "sebguru-assistant.generateCode",
           "group": "codeAssistant",
           "icon": "resources/sebguru-icon.svg"
+        },
+        {
+          "command": "sebguru-assistant.openChatPanel",
+          "group": "codeAssistant",
+          "icon": "resources/sebguru-icon.svg"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "sebguru-assistant.openChatPanel",
+          "title": "Open AI Chat Panel"
         }
       ]
     }
