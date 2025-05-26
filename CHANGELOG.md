@@ -6,7 +6,7 @@ All notable changes to the "SebGuru Assistant" extension will be documented in t
 
 ### Fixed
 - Updated default local LLM URL from "http://localhost:8080" to "http://127.0.0.1:11434" to fix chat functionality with local LLM servers
-- Updated default local LLM API path from "/v1/chat/completions" to "/api/generate" for compatibility with Ollama API
+- Updated default local LLM API path to "/api/chat/completions" for compatibility with Ollama API
 - Modified request payload format for Ollama API compatibility
 - Fixed URL construction to prevent double slashes in API endpoints
 

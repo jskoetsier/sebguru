@@ -126,7 +126,7 @@
         },
         "sebguru-assistant.localLLMPath": {
           "type": "string",
-          "default": "/api/generate",
+          "default": "/api/chat/completions",
           "description": "API endpoint path for the locally running LLM server"
         },
         "sebguru-assistant.apiHostname": {
