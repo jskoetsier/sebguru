@@ -157,6 +157,9 @@ class LLMClient {
         }
       );
 
+      // Log the response for debugging
+      console.log('Response from local LLM:', JSON.stringify(response.data));
+
       // Handle different response formats from various local LLM servers
       if (response.data.choices && response.data.choices.length > 0) {
         if (response.data.choices[0].message) {
@@ -164,12 +167,34 @@ class LLMClient {
         } else if (response.data.choices[0].text) {
           return response.data.choices[0].text;
         }
+      } else if (response.data.message) {
+        // Ollama API format
+        return response.data.message.content;
       } else if (response.data.response) {
         return response.data.response;
       } else if (response.data.output) {
         return response.data.output;
       } else if (typeof response.data === 'string') {
         return response.data;
+      }
+
+      // If we can't find a recognized format, try to extract content from the response
+      if (response.data && typeof response.data === 'object') {
+        // Try to find any field that might contain the response content
+        for (const key of ['content', 'text', 'result', 'answer', 'generated_text']) {
+          if (response.data[key] && typeof response.data[key] === 'string') {
+            return response.data[key];
+          }
+        }
+
+        // If there's a message object, try to extract content from it
+        if (response.data.message && typeof response.data.message === 'object') {
+          for (const key of ['content', 'text', 'value']) {
+            if (response.data.message[key] && typeof response.data.message[key] === 'string') {
+              return response.data.message[key];
+            }
+          }
+        }
       }
 
       console.error('Unexpected response format from local LLM:', response.data);

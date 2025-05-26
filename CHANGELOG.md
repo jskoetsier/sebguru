@@ -2,6 +2,13 @@
 
 All notable changes to the "SebGuru Assistant" extension will be documented in this file.
 
+## [0.6.2] - 2023-09-05
+
+### Fixed
+- Enhanced response format handling for Ollama API
+- Added detailed logging of API responses for better debugging
+- Improved error handling for unexpected response formats
+
 ## [0.6.1] - 2023-09-05
 
 ### Fixed

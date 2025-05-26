@@ -2,7 +2,7 @@
   "name": "sebguru-assistant",
   "displayName": "SebGuru Assistant",
   "description": "AI-assisted coding and agentic workflows powered by local LLMs or SebGuru",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "publisher": "SebGuru",
   "author": {
     "name": "SebGuru Team"
