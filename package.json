@@ -24,7 +24,7 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -211,7 +211,6 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
-    "axios": "^1.4.0",
     "openai": "^4.0.0"
   }
 }
