@@ -146,8 +146,9 @@
         },
         "sebguru-assistant.model": {
           "type": "string",
-          "default": "deepseek_r1-claude3.7",
+          "default": "GandalfBaum/deepseek_r1-claude3.7:latest",
           "enum": [
+            "GandalfBaum/deepseek_r1-claude3.7:latest",
             "deepseek_r1-claude3.7",
             "deepseek-coder",
             "deepseek-r1",

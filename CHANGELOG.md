@@ -6,7 +6,7 @@ All notable changes to the "SebGuru Assistant" extension will be documented in t
 
 ### Added
 - Added support for the "deepseek-r1" model
-- Added support for the "deepseek_r1-claude3.7" model and set it as the default
+- Added support for the "GandalfBaum/deepseek_r1-claude3.7:latest" model and set it as the default
 
 ### Fixed
 - Enhanced response format handling for Ollama API
