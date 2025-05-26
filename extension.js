@@ -206,7 +206,7 @@ class LLMClient {
           headers: {
             'Content-Type': 'application/json'
           },
-          timeout: 30000 // 30 seconds timeout
+          timeout: 120000 // 120 seconds (2 minutes) timeout
         }
       );
 
