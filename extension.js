@@ -1,70 +1,5 @@
 const vscode = require('vscode');
-const https = require('https');
-const http = require('http');
-const { URL } = require('url');
-
-// Custom HTTP request function to replace axios
-async function makeRequest(url, options = {}, data = null) {
-  return new Promise((resolve, reject) => {
-    const parsedUrl = new URL(url);
-    const isHttps = parsedUrl.protocol === 'https:';
-    const requestLib = isHttps ? https : http;
-
-    const requestOptions = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || (isHttps ? 443 : 80),
-      path: parsedUrl.pathname + parsedUrl.search,
-      method: options.method || 'GET',
-      headers: options.headers || {}
-    };
-
-    if (data) {
-      if (typeof data === 'object') {
-        data = JSON.stringify(data);
-        requestOptions.headers['Content-Type'] = 'application/json';
-      }
-      requestOptions.headers['Content-Length'] = Buffer.byteLength(data);
-    }
-
-    const req = requestLib.request(requestOptions, (res) => {
-      let responseData = '';
-
-      res.on('data', (chunk) => {
-        responseData += chunk;
-      });
-
-      res.on('end', () => {
-        try {
-          // Try to parse as JSON, but fall back to raw text if it fails
-          let parsedData;
-          try {
-            parsedData = JSON.parse(responseData);
-          } catch (e) {
-            parsedData = responseData;
-          }
-
-          resolve({
-            data: parsedData,
-            status: res.statusCode,
-            headers: res.headers
-          });
-        } catch (e) {
-          reject(new Error(`Error parsing response: ${e.message}`));
-        }
-      });
-    });
-
-    req.on('error', (error) => {
-      reject(error);
-    });
-
-    if (data) {
-      req.write(data);
-    }
-
-    req.end();
-  });
-}
+const axios = require('axios');
 
 /**
  * LLM client for making requests to either a local LLM server or the SebGuru API
@@ -180,12 +115,15 @@ class LLMClient {
 
       console.log(`Request payload: ${JSON.stringify(payload)}`);
 
-      const response = await makeRequest(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
+      const response = await axios.post(
+        url,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
-      }, payload);
+      );
 
       // Handle different response formats from various local LLM servers
       if (response.data.choices && response.data.choices.length > 0) {
@@ -222,24 +160,24 @@ class LLMClient {
     }
 
     try {
-      const url = `${this.baseUrl}/chat/completions`;
-      const payload = {
-        model: this.model,
-        messages: [
-          { role: 'system', content: options.systemPrompt || 'You are a helpful AI coding assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: options.maxTokens || this.maxTokens,
-        temperature: options.temperature || 0.7,
-      };
-
-      const response = await makeRequest(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: this.model,
+          messages: [
+            { role: 'system', content: options.systemPrompt || 'You are a helpful AI coding assistant.' },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: options.maxTokens || this.maxTokens,
+          temperature: options.temperature || 0.7,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          }
         }
-      }, payload);
+      );
 
       return response.data.choices[0].message.content;
     } catch (error) {
@@ -273,13 +211,16 @@ class AIChatViewProvider {
   }
 
   resolveWebviewView(webviewView) {
+    console.log('AIChatViewProvider.resolveWebviewView called');
     this._view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: []
     };
 
+    console.log('Updating webview with HTML content');
     this._updateWebview();
+    console.log('Webview HTML content updated');
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
       if (data.type === 'sendMessage') {
@@ -313,14 +254,23 @@ class AIChatViewProvider {
   }
 
   _updateWebview() {
+    console.log('AIChatViewProvider._updateWebview called');
     if (!this._view) {
+      console.log('AIChatViewProvider._updateWebview: _view is null');
       return;
     }
 
-    this._view.webview.html = this._getHtmlForWebview();
+    console.log('Setting webview HTML content');
+    const html = this._getHtmlForWebview();
+    console.log('HTML content length:', html.length);
+    this._view.webview.html = html;
+    console.log('Webview HTML content set');
   }
 
   _getHtmlForWebview() {
+    console.log('AIChatViewProvider._getHtmlForWebview called');
+    console.log('Chat history length:', this.chatHistory.length);
+
     const chatHistoryHtml = this.chatHistory.map(message => {
       const isUser = message.role === 'user';
       const messageClass = isUser ? 'user-message' : 'assistant-message';
@@ -475,64 +425,82 @@ class AIChatViewProvider {
         </div>
 
         <script>
-          const vscode = acquireVsCodeApi();
-          const messageInput = document.getElementById('message-input');
-          const sendButton = document.getElementById('send-button');
-          const clearButton = document.getElementById('clear-button');
-          const loading = document.getElementById('loading');
-          const messagesContainer = document.querySelector('.messages-container');
+          console.log('Webview script starting');
+          try {
+            const vscode = acquireVsCodeApi();
+            console.log('VS Code API acquired');
 
-          // Scroll to bottom of messages
-          function scrollToBottom() {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-          }
+            const messageInput = document.getElementById('message-input');
+            console.log('Message input element:', messageInput);
 
-          // Scroll to bottom on initial load
-          scrollToBottom();
+            const sendButton = document.getElementById('send-button');
+            console.log('Send button element:', sendButton);
 
-          // Send message when send button is clicked
-          sendButton.addEventListener('click', () => {
-            sendMessage();
-          });
+            const clearButton = document.getElementById('clear-button');
+            console.log('Clear button element:', clearButton);
 
-          // Send message when Enter key is pressed (without Shift)
-          messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
+            const loading = document.getElementById('loading');
+            console.log('Loading element:', loading);
+
+            const messagesContainer = document.querySelector('.messages-container');
+            console.log('Messages container element:', messagesContainer);
+
+            // Scroll to bottom of messages
+            function scrollToBottom() {
+              messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            // Scroll to bottom on initial load
+            scrollToBottom();
+
+            // Send message when send button is clicked
+            sendButton.addEventListener('click', () => {
               sendMessage();
-            }
-          });
+            });
 
-          // Clear chat when clear button is clicked
-          clearButton.addEventListener('click', () => {
-            vscode.postMessage({ type: 'clearChat' });
-          });
-
-          // Send message to extension
-          function sendMessage() {
-            const message = messageInput.value.trim();
-            if (message) {
-              vscode.postMessage({
-                type: 'sendMessage',
-                value: message
-              });
-              messageInput.value = '';
-            }
-          }
-
-          // Handle messages from extension
-          window.addEventListener('message', (event) => {
-            const message = event.data;
-
-            if (message.type === 'setLoading') {
-              if (message.value) {
-                loading.classList.add('active');
-              } else {
-                loading.classList.remove('active');
+            // Send message when Enter key is pressed (without Shift)
+            messageInput.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
               }
-              scrollToBottom();
+            });
+
+            // Clear chat when clear button is clicked
+            clearButton.addEventListener('click', () => {
+              vscode.postMessage({ type: 'clearChat' });
+            });
+
+            // Send message to extension
+            function sendMessage() {
+              const message = messageInput.value.trim();
+              if (message) {
+                vscode.postMessage({
+                  type: 'sendMessage',
+                  value: message
+                });
+                messageInput.value = '';
+              }
             }
-          });
+
+            // Handle messages from extension
+            window.addEventListener('message', (event) => {
+              const message = event.data;
+
+              if (message.type === 'setLoading') {
+                if (message.value) {
+                  loading.classList.add('active');
+                } else {
+                  loading.classList.remove('active');
+                }
+                scrollToBottom();
+              }
+            });
+
+            console.log('Event listeners set up successfully');
+          } catch (error) {
+            console.error('Error initializing webview:', error);
+          }
         </script>
       </body>
       </html>
@@ -836,8 +804,54 @@ function activate(context) {
     vscode.window.registerWebviewViewProvider('aiWorkflows', workflowsViewProvider)
   );
 
-  // Register commands
+  // Add a test command to create a simple webview
   context.subscriptions.push(
+    vscode.commands.registerCommand('sebguru-assistant.testWebview', async () => {
+      // Create a simple webview panel
+      const panel = vscode.window.createWebviewPanel(
+        'testWebview',
+        'Test Webview',
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true
+        }
+      );
+
+      // Set the HTML content
+      panel.webview.html = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Test Webview</title>
+        </head>
+        <body>
+          <h1>Test Webview</h1>
+          <p>If you can see this, webviews are working correctly.</p>
+          <button id="test-button">Click Me</button>
+
+          <script>
+            const vscode = acquireVsCodeApi();
+            document.getElementById('test-button').addEventListener('click', () => {
+              vscode.postMessage({ type: 'buttonClicked' });
+            });
+          </script>
+        </body>
+        </html>
+      `;
+
+      // Handle messages from the webview
+      panel.webview.onDidReceiveMessage(message => {
+        if (message.type === 'buttonClicked') {
+          vscode.window.showInformationMessage('Button clicked in webview!');
+        }
+      });
+
+      vscode.window.showInformationMessage('Test webview created. Check if it appears.');
+    }),
+
+    // Register other commands
     vscode.commands.registerCommand('sebguru-assistant.askAI', async () => {
       const input = await vscode.window.showInputBox({
         placeHolder: 'Ask AI Assistant something...',
