@@ -76,24 +76,55 @@ fi
 
 print_message "$GREEN" "VSIX file created: $VSIX_FILE"
 
-# Ask if user wants to install the extension
-read -p "Do you want to install the extension now? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-  print_message "$YELLOW" "Installing extension..."
-  code --install-extension "$VSIX_FILE"
-  print_message "$GREEN" "Extension installed successfully."
-  print_message "$YELLOW" "Please restart VS Code for the changes to take effect."
+# Check if the code command exists
+if command_exists code; then
+  # Ask if user wants to install the extension
+  read -p "Do you want to install the extension now? (y/n) " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    print_message "$YELLOW" "Installing extension..."
+    code --install-extension "$VSIX_FILE"
+    print_message "$GREEN" "Extension installed successfully."
+    print_message "$YELLOW" "Please restart VS Code for the changes to take effect."
+  else
+    print_message "$YELLOW" "To install the extension manually, run:"
+    print_message "$NC" "code --install-extension $VSIX_FILE"
+  fi
 else
-  print_message "$YELLOW" "To install the extension manually, run:"
-  print_message "$NC" "code --install-extension $VSIX_FILE"
+  print_message "$YELLOW" "The 'code' command was not found. To install the extension manually:"
+  print_message "$YELLOW" "1. Open VS Code"
+  print_message "$YELLOW" "2. Go to Extensions view (Ctrl+Shift+X or Cmd+Shift+X)"
+  print_message "$YELLOW" "3. Click on the '...' menu in the top-right corner"
+  print_message "$YELLOW" "4. Select 'Install from VSIX...'"
+  print_message "$YELLOW" "5. Navigate to and select this file: $VSIX_FILE"
 fi
 
-# Check if the extension directory exists in ~/.vscode/extensions
-EXTENSION_DIR=$(find ~/.vscode/extensions -maxdepth 1 -name "sebguru.sebguru-assistant-*" | sort -V | tail -n 1)
+# Try to find the extension directory in common locations
+print_message "$YELLOW" "Looking for installed extension directory..."
+
+# Common locations for VS Code extensions
+POSSIBLE_LOCATIONS=(
+  "$HOME/.vscode/extensions"
+  "$HOME/.vscode-insiders/extensions"
+  "$HOME/Library/Application Support/Code/User/extensions"
+  "$HOME/Library/Application Support/Code - Insiders/User/extensions"
+  "$HOME/.config/Code/User/extensions"
+  "$HOME/.config/Code - Insiders/User/extensions"
+)
+
+EXTENSION_DIR=""
+for location in "${POSSIBLE_LOCATIONS[@]}"; do
+  if [ -d "$location" ]; then
+    FOUND_DIR=$(find "$location" -maxdepth 1 -name "sebguru.sebguru-assistant-*" | sort -V | tail -n 1)
+    if [ -n "$FOUND_DIR" ]; then
+      EXTENSION_DIR="$FOUND_DIR"
+      break
+    fi
+  fi
+done
 
 if [ -n "$EXTENSION_DIR" ]; then
-  print_message "$YELLOW" "Found installed extension at: $EXTENSION_DIR"
+  print_message "$GREEN" "Found installed extension at: $EXTENSION_DIR"
 
   # Ask if user wants to install axios in the extension directory
   read -p "Do you want to install axios in the extension directory? (y/n) " -n 1 -r
@@ -104,6 +135,13 @@ if [ -n "$EXTENSION_DIR" ]; then
     print_message "$GREEN" "axios installed successfully in extension directory."
     print_message "$YELLOW" "Please restart VS Code for the changes to take effect."
   fi
+else
+  print_message "$YELLOW" "Could not find installed extension directory automatically."
+  print_message "$YELLOW" "After installing the extension, you may need to manually install axios in the extension directory:"
+  print_message "$YELLOW" "1. Find your VS Code extensions directory (typically ~/.vscode/extensions)"
+  print_message "$YELLOW" "2. Navigate to the sebguru.sebguru-assistant-* directory"
+  print_message "$YELLOW" "3. Run 'npm install axios' in that directory"
+  print_message "$YELLOW" "4. Restart VS Code"
 fi
 
 print_message "$GREEN" "Build process completed successfully!"
